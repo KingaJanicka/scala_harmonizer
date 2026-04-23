@@ -1,0 +1,162 @@
+[
+  {
+    "name": "untitled",
+    "preset": {
+      "__sps": {
+        "delay1": {
+          "dlyTimeSynced": {
+            "value": 0.5
+          }
+        },
+        "delay2": {
+          "dlyTimeSynced": {
+            "value": 0.5
+          }
+        },
+        "delayedFreqDetection": {},
+        "delayedFreqDetection[1]": {},
+        "diffusion1": {
+          "__sps": {
+            "diffuser": {
+              "__sps": {
+                "allpassBlock": {},
+                "allpassBlock[1]": {},
+                "allpassBlock[2]": {},
+                "allpassBlock[3]": {},
+                "allpassBlock[4]": {},
+                "allpassBlock[5]": {},
+                "allpassBlock[6]": {},
+                "allpassBlock[7]": {}
+              }
+            },
+            "diffuser[1]": {
+              "__sps": {
+                "allpassBlock": {},
+                "allpassBlock[1]": {},
+                "allpassBlock[2]": {},
+                "allpassBlock[3]": {},
+                "allpassBlock[4]": {},
+                "allpassBlock[5]": {},
+                "allpassBlock[6]": {},
+                "allpassBlock[7]": {}
+              }
+            }
+          },
+          "diffuseGain": {
+            "value": 0
+          },
+          "diffuseTime": {
+            "value": 0
+          }
+        },
+        "diffusion2": {
+          "__sps": {
+            "diffuser": {
+              "__sps": {
+                "allpassBlock": {},
+                "allpassBlock[1]": {},
+                "allpassBlock[2]": {},
+                "allpassBlock[3]": {},
+                "allpassBlock[4]": {},
+                "allpassBlock[5]": {},
+                "allpassBlock[6]": {},
+                "allpassBlock[7]": {}
+              }
+            },
+            "diffuser[1]": {
+              "__sps": {
+                "allpassBlock": {},
+                "allpassBlock[1]": {},
+                "allpassBlock[2]": {},
+                "allpassBlock[3]": {},
+                "allpassBlock[4]": {},
+                "allpassBlock[5]": {},
+                "allpassBlock[6]": {},
+                "allpassBlock[7]": {}
+              }
+            }
+          },
+          "diffuseGain": {
+            "value": 0
+          },
+          "diffuseTime": {
+            "value": 0
+          }
+        },
+        "feedbackMixer": {
+          "1x1": {
+            "value": 0
+          },
+          "1x2": {
+            "value": 0
+          },
+          "2x1": {
+            "value": 0
+          },
+          "2x2": {
+            "value": 0
+          },
+          "dly1PrePost": {
+            "value": 0
+          },
+          "dly2PrePost": {
+            "value": 0
+          }
+        },
+        "pitchShifter1": {
+          "__sps": {
+            "FreqCalc": {},
+            "Mix~": {},
+            "PitchShift~": {},
+            "PitchShift~[1]": {},
+            "Switch~": {},
+            "pitchQuantizer": {
+              "scaleSelect": {
+                "value": 1
+              },
+              "scaleTransposeSt": {
+                "value": 0
+              }
+            }
+          }
+        },
+        "pitchShifter2": {
+          "__sps": {
+            "FreqCalc": {},
+            "Mix~": {},
+            "PitchShift~": {},
+            "PitchShift~[1]": {},
+            "Switch~": {},
+            "pitchQuantizer": {
+              "scaleSelect": {
+                "value": 1
+              },
+              "scaleTransposeSt": {
+                "value": 0
+              }
+            }
+          }
+        },
+        "shifterFilter1": {
+          "cutoff": {
+            "value": 0.5
+          }
+        },
+        "shifterFilter2": {
+          "cutoff": {
+            "value": 0.5
+          }
+        }
+      },
+      "dly1Vol": {
+        "value": 1
+      },
+      "dly2Vol": {
+        "value": 1
+      },
+      "dryVol": {
+        "value": 1
+      }
+    }
+  }
+]
