@@ -1,61 +1,145 @@
-cmake_minimum_required(VERSION 3.15)
+# ==============================================================================
+#
+#  Copyright 2022 Suzuki Kengo
+#
+#  JR-Granular is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  JR-Granular is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with JR-Granular. If not, see <http://www.gnu.org/licenses/>.
+#
+# ==============================================================================
 
-# On M1 Macs, uncomment to enable universal binaries
-set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "")
+cmake_minimum_required(VERSION 3.27)
 
-set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build, options are: Debug Release")
+# These variables should be set before the first project() command is called.
+# Additionally, they should be set as cache variables so that their values can be overridden.
+# References:
+# - https://cmake.org/cmake/help/v3.27/variable/CMAKE_OSX_ARCHITECTURES.html
+# - https://cmake.org/cmake/help/v3.27/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum macOS version required")
 
-project(RNBO_JUCE_EXAMPLE VERSION 2.0.0)
+project(jr-granular VERSION 1.0.4)
 
-set(CMAKE_CXX_STANDARD 14) #JUCE requires 14
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_COLOR_MAKEFILE ON)
-set(CMAKE_COLOR_DIAGNOSTICS ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+set(TARGET_NAME "${PROJECT_NAME}")
 
-set(RNBO_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/export/rnbo/" CACHE FILEPATH "The path to the the RNBO c++ source directory")
-set(RNBO_EXPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/export/" CACHE FILEPATH "path to your export directory")
-set(RNBO_CLASS_FILE_NAME "rnbo_source.cpp" CACHE STRING "the name of your rnbo class file")
-mark_as_advanced(RNBO_CLASS_FILE_NAME)
+set(PLUGIN_FORMATS VST3 AU Standalone)
 
-set(RNBO_CLASS_NAME "rnbomatic")
-set(RNBO_CLASS_FILE "${RNBO_EXPORT_DIR}/${RNBO_CLASS_FILE_NAME}")
-set(RNBO_DESCRIPTION_FILE "${RNBO_EXPORT_DIR}/description.json")
-set(RNBO_PRESETS_FILE "${RNBO_EXPORT_DIR}/presets.json")
-set(RNBO_BINARY_DATA_FILE "${RNBO_EXPORT_DIR}/${RNBO_CLASS_NAME}_binary.cpp")
-set(RNBO_BINARY_DATA_STORAGE_NAME "${RNBO_CLASS_NAME}_binary")
-set(PLUGIN_PARAM_DEFAULT_NOTIFY ON CACHE BOOL "Should parameter changes from inside your rnbo patch send output by default?")
-
-#write description header file if description.json exists, sets RNBO_INCLUDE_DESCRIPTION_FILE if the file exists
-include(${RNBO_CPP_DIR}/cmake/RNBODescriptionHeader.cmake)
-set(DESCRIPTION_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
-rnbo_write_description_header_if_exists(${RNBO_DESCRIPTION_FILE} ${DESCRIPTION_INCLUDE_DIR} ${RNBO_PRESETS_FILE})
-include_directories(${DESCRIPTION_INCLUDE_DIR})
-
-if (EXISTS ${RNBO_BINARY_DATA_FILE})
-	add_definitions(-DRNBO_BINARY_DATA_STORAGE_NAME=${RNBO_BINARY_DATA_STORAGE_NAME})
+if(DEFINED ENV{CI})
+    list(REMOVE_ITEM PLUGIN_FORMATS Standalone)
 endif()
 
-# Include the JUCE submodule, needed for JUCE-based CMake definitions
-add_subdirectory(
-  ${CMAKE_CURRENT_LIST_DIR}/thirdparty/juce
-  ${CMAKE_BINARY_DIR}/juce
-  EXCLUDE_FROM_ALL #don't build examples etc, also don't install
+add_subdirectory(lib/JUCE)
+
+juce_add_plugin(${TARGET_NAME}
+    COMPANY_NAME "Kengo"
+    COMPANY_WEBSITE "https://kengo.dev"
+    COMPANY_EMAIL "hi@kengo.dev"
+    BUNDLE_ID "dev.kengo.${PROJECT_NAME}"
+    PLUGIN_MANUFACTURER_CODE "Kngo"
+    PLUGIN_CODE "Jrgr"
+    FORMATS ${PLUGIN_FORMATS}
+    COPY_PLUGIN_AFTER_BUILD TRUE
+    PLUGIN_NAME "JR-Granular"
 )
 
-# Or, instead, use Conan to get JUCE, should speed up clean builds
-# include(${RNBO_CPP_DIR}/cmake/RNBOJuce.cmake)
+add_subdirectory(export)
+add_subdirectory(src)
 
+target_compile_definitions(${TARGET_NAME} PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 
-# Optionally, enable ccache, should speed up builds
-# include(${RNBO_CPP_DIR}/cmake/CCache.cmake)
+juce_add_binary_data(binary_data SOURCES res/UbuntuRegular.ttf)
 
+target_link_libraries(
+    ${TARGET_NAME}
+    PRIVATE
+        binary_data
+        juce::juce_audio_utils
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
 
-# Comment out this line if you really want to emulate MIDI CC with Audio Parameters.
-# See the discussion here: https://forums.steinberg.net/t/vst3-and-midi-cc-pitfall/201879/11
-add_compile_definitions(JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-# setup your application, you can remove this include if you don't want to build applications
-include(${CMAKE_CURRENT_LIST_DIR}/App.cmake)
+enable_testing()
+include(Pluginval)
+add_pluginval_tests(${TARGET_NAME}_VST3)
 
-# setup your plugin(s), you can remove this include if you don't want to build plugins
-include(${CMAKE_CURRENT_LIST_DIR}/Plugin.cmake)
+if(DEFINED ENV{CI})
+    include(Codesign)
+    codesign_plugins(${TARGET_NAME})
+endif()
+
+if(APPLE)
+    install(TARGETS ${TARGET_NAME}_VST3 LIBRARY DESTINATION "VST3" COMPONENT VST3)
+    install(TARGETS ${TARGET_NAME}_AU LIBRARY DESTINATION "Components" COMPONENT AU)
+elseif(WIN32)
+    install(TARGETS ${TARGET_NAME}_VST3 LIBRARY DESTINATION "." COMPONENT VST3)
+endif()
+
+set(PACKAGE_NAME "jr-granular")
+set(PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/jr-granular")
+if(APPLE)
+    set(PACKAGE_FILE_NAME "mac_${PACKAGE_NAME}")
+elseif(WIN32)
+    set(PACKAGE_FILE_NAME "win_${PACKAGE_NAME}")
+endif()
+get_target_property(vendor ${TARGET_NAME} JUCE_COMPANY_NAME)
+get_target_property(contact ${TARGET_NAME} JUCE_COMPANY_EMAIL)
+set(CPACK_PACKAGE_NAME "${PACKAGE_NAME}")
+set(CPACK_PACKAGE_DIRECTORY "${PACKAGE_DIRECTORY}")
+set(CPACK_PACKAGE_FILE_NAME "${PACKAGE_FILE_NAME}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "This is ${PACKAGE_FILE_NAME} package.")
+set(CPACK_PACKAGE_VENDOR "${vendor}")
+set(CPACK_PACKAGE_CONTACT "${contact}")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/res/license.txt")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/res/readme.txt")
+set(CPACK_VERBATIM_VARIABLES TRUE)
+
+if(APPLE)
+    set(CPACK_GENERATOR productbuild)
+    set(CPACK_COMPONENTS_ALL "VST3" "AU")
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/Library/Audio/Plug-Ins")
+    set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Developer ID Installer")
+    set(CPACK_PRODUCTBUILD_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/res")
+    set(CPACK_PRODUCTBUILD_BACKGROUND "background-light.png")
+    set(CPACK_PRODUCTBUILD_BACKGROUND_DARKAQUA "background-dark.png")
+elseif(WIN32)
+    set(CPACK_GENERATOR INNOSETUP)
+    set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_CURRENT_BINARY_DIR};${PROJECT_NAME};VST3;/")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY ".")
+    set(CPACK_INNOSETUP_INSTALL_ROOT "{commoncf64}/VST3")
+    set(CPACK_INNOSETUP_ARCHITECTURE x64)
+    set(CPACK_INNOSETUP_ALLOW_CUSTOM_DIRECTORY ON)
+    set(CPACK_INNOSETUP_USE_MODERN_WIZARD ON)
+    set(CPACK_INNOSETUP_SETUP_Uninstallable no)
+    set(CPACK_INNOSETUP_SETUP_UsePreviousAppDir no)
+    set(CPACK_INNOSETUP_SETUP_DirExistsWarning no)
+    set(CPACK_INNOSETUP_SETUP_AppendDefaultDirName no)
+endif()
+
+include(CPack)
+
+if(APPLE)
+    cpack_add_component(${TARGET_NAME}_VST3 DISPLAY_NAME "VST3" DESCRIPTION "VST3 plugin" INSTALL_TYPES full)
+    cpack_add_component(${TARGET_NAME}_AU DISPLAY_NAME "AU" DESCRIPTION "AU plugin" INSTALL_TYPES full)
+    cpack_add_install_type(full)
+endif()
+
+include(EnvCI)

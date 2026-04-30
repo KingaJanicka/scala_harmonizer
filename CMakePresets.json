@@ -1,0 +1,64 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "ci-ninja-multi",
+      "displayName": "Ninja Multi-Config",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER_LAUNCHER": "sccache",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "sccache"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-ninja-multi-debug",
+      "configurePreset": "ci-ninja-multi",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-ninja-multi-release",
+      "configurePreset": "ci-ninja-multi",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-ninja-multi-release",
+      "configurePreset": "ci-ninja-multi",
+      "configuration": "Release"
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "ci-ninja-multi-release",
+      "configurePreset": "ci-ninja-multi",
+      "configurations": ["Release"]
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ci-ninja-multi-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ci-ninja-multi"
+        },
+        {
+          "type": "build",
+          "name": "ci-ninja-multi-release"
+        },
+        {
+          "type": "test",
+          "name": "ci-ninja-multi-release"
+        },
+        {
+          "type": "package",
+          "name": "ci-ninja-multi-release"
+        }
+      ]
+    }
+  ]
+}
