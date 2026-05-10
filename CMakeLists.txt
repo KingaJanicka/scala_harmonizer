@@ -27,7 +27,7 @@ cmake_minimum_required(VERSION 3.27)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum macOS version required")
 
-project(jr-granular VERSION 1.0.4)
+project(just-harmonizer VERSION 1.0.4)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -44,15 +44,15 @@ endif()
 add_subdirectory(lib/JUCE)
 
 juce_add_plugin(${TARGET_NAME}
-    COMPANY_NAME "Kengo"
-    COMPANY_WEBSITE "https://kengo.dev"
-    COMPANY_EMAIL "hi@kengo.dev"
-    BUNDLE_ID "dev.kengo.${PROJECT_NAME}"
-    PLUGIN_MANUFACTURER_CODE "Kngo"
-    PLUGIN_CODE "Jrgr"
+    COMPANY_NAME "Kinga"
+    COMPANY_WEBSITE "https://kinga.dev"
+    COMPANY_EMAIL "hi@kinga.dev"
+    BUNDLE_ID "dev.kinga.${PROJECT_NAME}"
+    PLUGIN_MANUFACTURER_CODE "Knga"
+    PLUGIN_CODE "JSTH"
     FORMATS ${PLUGIN_FORMATS}
     COPY_PLUGIN_AFTER_BUILD TRUE
-    PLUGIN_NAME "JR-Granular"
+    PLUGIN_NAME "Just Harmonizer"
 )
 
 add_subdirectory(export)
@@ -90,8 +90,8 @@ elseif(WIN32)
     install(TARGETS ${TARGET_NAME}_VST3 LIBRARY DESTINATION "." COMPONENT VST3)
 endif()
 
-set(PACKAGE_NAME "jr-granular")
-set(PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/jr-granular")
+set(PACKAGE_NAME "just-harmonizer")
+set(PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/just-harmonizer")
 if(APPLE)
     set(PACKAGE_FILE_NAME "mac_${PACKAGE_NAME}")
 elseif(WIN32)

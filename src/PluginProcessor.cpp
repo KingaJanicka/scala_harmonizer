@@ -40,6 +40,16 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         return juce::String { std::round (value) } + unit;
     };
 
+    const auto semitones = [] (auto value, auto)
+    {
+        constexpr auto unit = " st";
+
+        if (auto v { std::round (value * 10.0f) / 10.0f }; v < 100.0f)
+            return juce::String { v, 1 } + unit;
+
+        return juce::String { std::round (value) } + unit;
+    };
+
 
     // Format the number to always display three digits like "0.01 %", "10.0 %", "100 %".
     const auto percentage = [] (auto value, auto)
@@ -106,21 +116,21 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "Transp.",
         juce::NormalisableRange { -24.0f, 24.0f, 0.01f, 1.0f },
         100.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentage)));
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (semitones)));
         
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { param_ids::scaleTranspose, 1 },
-        "Scale Root",
-        juce::NormalisableRange { 0.0f, 11.0f, 1.0f, 1.0f },
+        "Scl Root",
+        juce::NormalisableRange { 0.0f, 11.0f, 0.01f, 1.0f },
         100.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentage)));
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (semitones)));
     
     
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { param_ids::scaleSelect, 1 },
         "Scale",
-        juce::NormalisableRange { 1.0f, 2.0f, 1.0f, 1.0f },
+        juce::NormalisableRange { 1.0f, 6.0f, 0.01f, 1.0f },
         100.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentage)));
         
@@ -204,7 +214,7 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "Transp.",
         juce::NormalisableRange { -24.0f, 24.0f, 0.01f, 1.0f },
         100.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentage)));
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (semitones)));
         
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (

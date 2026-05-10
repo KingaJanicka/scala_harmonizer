@@ -109,7 +109,6 @@ Index getNumMidiInputPorts() const {
 void processMidiEvent(MillisecondTime time, int port, ConstByteArray data, Index length) {
     this->updateTime(time, (ENGINE*)nullptr);
     this->p_53_midihandler(data[0] & 240, (data[0] & 15) + 1, port, data, length);
-    this->midiin_01_midihandler(data[0] & 240, (data[0] & 15) + 1, port, data, length);
     this->p_55_midihandler(data[0] & 240, (data[0] & 15) + 1, port, data, length);
 }
 
@@ -189,6 +188,37 @@ void process(
         n
     );
 
+    this->p_56_perform(this->signals[11], this->signals[4], this->signals[3], this->signals[2], n);
+
+    this->xfade_tilde_57_perform(
+        this->xfade_tilde_57_pos,
+        this->signals[3],
+        this->zeroBuffer,
+        this->signals[14],
+        n
+    );
+
+    this->signaladder_01_perform(
+        this->signals[14],
+        this->signals[10],
+        this->signals[0],
+        this->signals[0],
+        n
+    );
+
+    this->dcblock_tilde_01_perform(this->signals[0], this->dcblock_tilde_01_gain, out1, n);
+
+    this->xfade_tilde_58_perform(
+        this->xfade_tilde_58_pos,
+        this->signals[2],
+        this->zeroBuffer,
+        this->signals[10],
+        n
+    );
+
+    this->signaladder_02_perform(this->signals[10], this->signals[5], this->signals[1], this->signals[1], n);
+    this->dcblock_tilde_02_perform(this->signals[1], this->dcblock_tilde_02_gain, out2, n);
+
     this->p_54_perform(
         this->signals[8],
         this->signals[9],
@@ -198,47 +228,17 @@ void process(
         this->signals[13],
         this->signals[11],
         this->signals[4],
-        this->signals[3],
+        this->signals[5],
+        this->signals[10],
         this->signals[2],
         this->signals[14],
-        this->signals[15],
         n
     );
 
-    this->feedbackwriter_01_perform(this->signals[3], n);
-    this->feedbackwriter_02_perform(this->signals[2], n);
-    this->feedbackwriter_03_perform(this->signals[14], n);
-    this->feedbackwriter_04_perform(this->signals[15], n);
-
-    this->p_56_perform(
-        this->signals[11],
-        this->signals[4],
-        this->signals[15],
-        this->signals[14],
-        n
-    );
-
-    this->xfade_tilde_57_perform(
-        this->xfade_tilde_57_pos,
-        this->signals[15],
-        this->zeroBuffer,
-        this->signals[4],
-        n
-    );
-
-    this->signaladder_01_perform(this->signals[4], this->signals[10], this->signals[0], this->signals[0], n);
-    this->dcblock_tilde_01_perform(this->signals[0], this->dcblock_tilde_01_gain, out1, n);
-
-    this->xfade_tilde_58_perform(
-        this->xfade_tilde_58_pos,
-        this->signals[14],
-        this->zeroBuffer,
-        this->signals[10],
-        n
-    );
-
-    this->signaladder_02_perform(this->signals[10], this->signals[5], this->signals[1], this->signals[1], n);
-    this->dcblock_tilde_02_perform(this->signals[1], this->dcblock_tilde_02_gain, out2, n);
+    this->feedbackwriter_01_perform(this->signals[5], n);
+    this->feedbackwriter_02_perform(this->signals[10], n);
+    this->feedbackwriter_03_perform(this->signals[2], n);
+    this->feedbackwriter_04_perform(this->signals[14], n);
     this->stackprotect_perform(n);
     this->globaltransport_advance();
     this->advanceTime((ENGINE*)nullptr);
@@ -251,7 +251,7 @@ void prepareToProcess(number sampleRate, Index maxBlockSize, bool force) {
     if (this->maxvs < maxBlockSize || !this->didAllocateSignals) {
         Index i;
 
-        for (i = 0; i < 16; i++) {
+        for (i = 0; i < 15; i++) {
             this->signals[i] = resizeSignal(this->signals[i], this->maxvs, maxBlockSize);
         }
 
@@ -966,7 +966,7 @@ void getParameterInfo(ParameterIndex index, ParameterInfo * info) const {
             info->min = 0;
             info->max = 11;
             info->exponent = 1;
-            info->steps = 12;
+            info->steps = 0;
             info->debug = false;
             info->saveable = true;
             info->transmittable = true;
@@ -983,9 +983,9 @@ void getParameterInfo(ParameterIndex index, ParameterInfo * info) const {
             info->type = ParameterTypeNumber;
             info->initialValue = 1;
             info->min = 1;
-            info->max = 2;
+            info->max = 6;
             info->exponent = 1;
-            info->steps = 1;
+            info->steps = 0;
             info->debug = false;
             info->saveable = true;
             info->transmittable = true;
@@ -1110,24 +1110,14 @@ ParameterValue convertToNormalizedParameterValue(ParameterIndex index, Parameter
         {
             value = (value < 0 ? 0 : (value > 11 ? 11 : value));
             ParameterValue normalizedValue = (value - 0) / (11 - 0);
-
-            {
-                normalizedValue = this->applyStepsToNormalizedParameterValue(normalizedValue, 12);
-            }
-
             return normalizedValue;
         }
         }
     case 3:
         {
         {
-            value = (value < 1 ? 1 : (value > 2 ? 2 : value));
-            ParameterValue normalizedValue = (value - 1) / (2 - 1);
-
-            {
-                normalizedValue = this->applyStepsToNormalizedParameterValue(normalizedValue, 1);
-            }
-
+            value = (value < 1 ? 1 : (value > 6 ? 6 : value));
+            ParameterValue normalizedValue = (value - 1) / (6 - 1);
             return normalizedValue;
         }
         }
@@ -1211,10 +1201,6 @@ ParameterValue convertFromNormalizedParameterValue(ParameterIndex index, Paramet
         {
         {
             {
-                value = this->applyStepsToNormalizedParameterValue(value, 12);
-            }
-
-            {
                 return 0 + value * (11 - 0);
             }
         }
@@ -1223,11 +1209,7 @@ ParameterValue convertFromNormalizedParameterValue(ParameterIndex index, Paramet
         {
         {
             {
-                value = this->applyStepsToNormalizedParameterValue(value, 1);
-            }
-
-            {
-                return 1 + value * (2 - 1);
+                return 1 + value * (6 - 1);
             }
         }
         }
@@ -1507,16 +1489,16 @@ const MessageInfo& getMessageInfo(MessageIndex index) const {
 
 protected:
 
-class RNBOSubpatcher_1607 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5149 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1607()
+    RNBOSubpatcher_5149()
     {}
     
-    ~RNBOSubpatcher_1607()
+    ~RNBOSubpatcher_5149()
     {
         deallocateSignals();
     }
@@ -1737,10 +1719,10 @@ class RNBOSubpatcher_1607 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1607* operator->() {
+    RNBOSubpatcher_5149* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1607* operator->() const {
+    const RNBOSubpatcher_5149* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -2351,16 +2333,16 @@ class RNBOSubpatcher_1607 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5150 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1608()
+    RNBOSubpatcher_5150()
     {}
     
-    ~RNBOSubpatcher_1608()
+    ~RNBOSubpatcher_5150()
     {
         deallocateSignals();
     }
@@ -2816,17 +2798,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
     
     protected:
     
-    class RNBOSubpatcher_1575 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5117 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1608;
+            friend class RNBOSubpatcher_5150;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1575()
+            RNBOSubpatcher_5117()
             {}
             
-            ~RNBOSubpatcher_1575()
+            ~RNBOSubpatcher_5117()
             {
                 deallocateSignals();
             }
@@ -3551,17 +3533,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
             
             protected:
             
-            class RNBOSubpatcher_1559 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5101 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1559()
+                        RNBOSubpatcher_5101()
                         {}
                         
-                        ~RNBOSubpatcher_1559()
+                        ~RNBOSubpatcher_5101()
                         {
                             deallocateSignals();
                         }
@@ -3842,14 +3824,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1559* operator->() {
+                        RNBOSubpatcher_5101* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1559* operator->() const {
+                        const RNBOSubpatcher_5101* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -4768,17 +4750,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1560 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5102 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1560()
+                        RNBOSubpatcher_5102()
                         {}
                         
-                        ~RNBOSubpatcher_1560()
+                        ~RNBOSubpatcher_5102()
                         {
                             deallocateSignals();
                         }
@@ -5059,14 +5041,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1560* operator->() {
+                        RNBOSubpatcher_5102* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1560* operator->() const {
+                        const RNBOSubpatcher_5102* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -5985,17 +5967,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1561 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5103 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1561()
+                        RNBOSubpatcher_5103()
                         {}
                         
-                        ~RNBOSubpatcher_1561()
+                        ~RNBOSubpatcher_5103()
                         {
                             deallocateSignals();
                         }
@@ -6276,14 +6258,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1561* operator->() {
+                        RNBOSubpatcher_5103* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1561* operator->() const {
+                        const RNBOSubpatcher_5103* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -7202,17 +7184,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1562 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5104 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1562()
+                        RNBOSubpatcher_5104()
                         {}
                         
-                        ~RNBOSubpatcher_1562()
+                        ~RNBOSubpatcher_5104()
                         {
                             deallocateSignals();
                         }
@@ -7493,14 +7475,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1562* operator->() {
+                        RNBOSubpatcher_5104* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1562* operator->() const {
+                        const RNBOSubpatcher_5104* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -8419,17 +8401,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1563 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5105 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1563()
+                        RNBOSubpatcher_5105()
                         {}
                         
-                        ~RNBOSubpatcher_1563()
+                        ~RNBOSubpatcher_5105()
                         {
                             deallocateSignals();
                         }
@@ -8710,14 +8692,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1563* operator->() {
+                        RNBOSubpatcher_5105* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1563* operator->() const {
+                        const RNBOSubpatcher_5105* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -9636,17 +9618,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1564 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5106 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1564()
+                        RNBOSubpatcher_5106()
                         {}
                         
-                        ~RNBOSubpatcher_1564()
+                        ~RNBOSubpatcher_5106()
                         {
                             deallocateSignals();
                         }
@@ -9927,14 +9909,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1564* operator->() {
+                        RNBOSubpatcher_5106* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1564* operator->() const {
+                        const RNBOSubpatcher_5106* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -10853,17 +10835,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1565 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5107 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1565()
+                        RNBOSubpatcher_5107()
                         {}
                         
-                        ~RNBOSubpatcher_1565()
+                        ~RNBOSubpatcher_5107()
                         {
                             deallocateSignals();
                         }
@@ -11144,14 +11126,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1565* operator->() {
+                        RNBOSubpatcher_5107* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1565* operator->() const {
+                        const RNBOSubpatcher_5107* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -12070,17 +12052,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1566 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5108 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1575;
+                        friend class RNBOSubpatcher_5117;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1566()
+                        RNBOSubpatcher_5108()
                         {}
                         
-                        ~RNBOSubpatcher_1566()
+                        ~RNBOSubpatcher_5108()
                         {
                             deallocateSignals();
                         }
@@ -12361,14 +12343,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1566* operator->() {
+                        RNBOSubpatcher_5108* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1566* operator->() const {
+                        const RNBOSubpatcher_5108* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1575* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1575 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5117* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5117 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -13293,14 +13275,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1575* operator->() {
+            RNBOSubpatcher_5117* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1575* operator->() const {
+            const RNBOSubpatcher_5117* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1608* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1608 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5150* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5150 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -14025,28 +14007,28 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                 Int _noteNumber;
                 Index isMuted;
                 ParameterIndex parameterOffset;
-                RNBOSubpatcher_1559 p_01;
-                RNBOSubpatcher_1560 p_02;
-                RNBOSubpatcher_1561 p_03;
-                RNBOSubpatcher_1562 p_04;
-                RNBOSubpatcher_1563 p_05;
-                RNBOSubpatcher_1564 p_06;
-                RNBOSubpatcher_1565 p_07;
-                RNBOSubpatcher_1566 p_08;
+                RNBOSubpatcher_5101 p_01;
+                RNBOSubpatcher_5102 p_02;
+                RNBOSubpatcher_5103 p_03;
+                RNBOSubpatcher_5104 p_04;
+                RNBOSubpatcher_5105 p_05;
+                RNBOSubpatcher_5106 p_06;
+                RNBOSubpatcher_5107 p_07;
+                RNBOSubpatcher_5108 p_08;
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1576 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5118 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1608;
+            friend class RNBOSubpatcher_5150;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1576()
+            RNBOSubpatcher_5118()
             {}
             
-            ~RNBOSubpatcher_1576()
+            ~RNBOSubpatcher_5118()
             {
                 deallocateSignals();
             }
@@ -14771,17 +14753,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
             
             protected:
             
-            class RNBOSubpatcher_1567 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5109 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1567()
+                        RNBOSubpatcher_5109()
                         {}
                         
-                        ~RNBOSubpatcher_1567()
+                        ~RNBOSubpatcher_5109()
                         {
                             deallocateSignals();
                         }
@@ -15062,14 +15044,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1567* operator->() {
+                        RNBOSubpatcher_5109* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1567* operator->() const {
+                        const RNBOSubpatcher_5109* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -15988,17 +15970,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1568 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5110 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1568()
+                        RNBOSubpatcher_5110()
                         {}
                         
-                        ~RNBOSubpatcher_1568()
+                        ~RNBOSubpatcher_5110()
                         {
                             deallocateSignals();
                         }
@@ -16279,14 +16261,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1568* operator->() {
+                        RNBOSubpatcher_5110* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1568* operator->() const {
+                        const RNBOSubpatcher_5110* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -17205,17 +17187,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1569 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5111 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1569()
+                        RNBOSubpatcher_5111()
                         {}
                         
-                        ~RNBOSubpatcher_1569()
+                        ~RNBOSubpatcher_5111()
                         {
                             deallocateSignals();
                         }
@@ -17496,14 +17478,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1569* operator->() {
+                        RNBOSubpatcher_5111* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1569* operator->() const {
+                        const RNBOSubpatcher_5111* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -18422,17 +18404,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1570 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5112 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1570()
+                        RNBOSubpatcher_5112()
                         {}
                         
-                        ~RNBOSubpatcher_1570()
+                        ~RNBOSubpatcher_5112()
                         {
                             deallocateSignals();
                         }
@@ -18713,14 +18695,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1570* operator->() {
+                        RNBOSubpatcher_5112* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1570* operator->() const {
+                        const RNBOSubpatcher_5112* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -19639,17 +19621,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1571 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5113 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1571()
+                        RNBOSubpatcher_5113()
                         {}
                         
-                        ~RNBOSubpatcher_1571()
+                        ~RNBOSubpatcher_5113()
                         {
                             deallocateSignals();
                         }
@@ -19930,14 +19912,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1571* operator->() {
+                        RNBOSubpatcher_5113* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1571* operator->() const {
+                        const RNBOSubpatcher_5113* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -20856,17 +20838,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1572 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5114 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1572()
+                        RNBOSubpatcher_5114()
                         {}
                         
-                        ~RNBOSubpatcher_1572()
+                        ~RNBOSubpatcher_5114()
                         {
                             deallocateSignals();
                         }
@@ -21147,14 +21129,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1572* operator->() {
+                        RNBOSubpatcher_5114* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1572* operator->() const {
+                        const RNBOSubpatcher_5114* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -22073,17 +22055,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1573 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5115 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1573()
+                        RNBOSubpatcher_5115()
                         {}
                         
-                        ~RNBOSubpatcher_1573()
+                        ~RNBOSubpatcher_5115()
                         {
                             deallocateSignals();
                         }
@@ -22364,14 +22346,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1573* operator->() {
+                        RNBOSubpatcher_5115* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1573* operator->() const {
+                        const RNBOSubpatcher_5115* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -23290,17 +23272,17 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1574 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5116 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1576;
+                        friend class RNBOSubpatcher_5118;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1574()
+                        RNBOSubpatcher_5116()
                         {}
                         
-                        ~RNBOSubpatcher_1574()
+                        ~RNBOSubpatcher_5116()
                         {
                             deallocateSignals();
                         }
@@ -23581,14 +23563,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1574* operator->() {
+                        RNBOSubpatcher_5116* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1574* operator->() const {
+                        const RNBOSubpatcher_5116* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1576* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1576 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5118* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5118 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -24513,14 +24495,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1576* operator->() {
+            RNBOSubpatcher_5118* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1576* operator->() const {
+            const RNBOSubpatcher_5118* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1608* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1608 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5150* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5150 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -25245,14 +25227,14 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
                 Int _noteNumber;
                 Index isMuted;
                 ParameterIndex parameterOffset;
-                RNBOSubpatcher_1567 p_09;
-                RNBOSubpatcher_1568 p_10;
-                RNBOSubpatcher_1569 p_11;
-                RNBOSubpatcher_1570 p_12;
-                RNBOSubpatcher_1571 p_13;
-                RNBOSubpatcher_1572 p_14;
-                RNBOSubpatcher_1573 p_15;
-                RNBOSubpatcher_1574 p_16;
+                RNBOSubpatcher_5109 p_09;
+                RNBOSubpatcher_5110 p_10;
+                RNBOSubpatcher_5111 p_11;
+                RNBOSubpatcher_5112 p_12;
+                RNBOSubpatcher_5113 p_13;
+                RNBOSubpatcher_5114 p_14;
+                RNBOSubpatcher_5115 p_15;
+                RNBOSubpatcher_5116 p_16;
                 bool _isInitialized = false;
     };
     
@@ -25262,10 +25244,10 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1608* operator->() {
+    RNBOSubpatcher_5150* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1608* operator->() const {
+    const RNBOSubpatcher_5150* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -25643,21 +25625,21 @@ class RNBOSubpatcher_1608 : public PatcherInterfaceImpl {
         Int _noteNumber;
         Index isMuted;
         ParameterIndex parameterOffset;
-        RNBOSubpatcher_1575 p_17;
-        RNBOSubpatcher_1576 p_18;
+        RNBOSubpatcher_5117 p_17;
+        RNBOSubpatcher_5118 p_18;
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1609 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5151 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1609()
+    RNBOSubpatcher_5151()
     {}
     
-    ~RNBOSubpatcher_1609()
+    ~RNBOSubpatcher_5151()
     {
         deallocateSignals();
     }
@@ -26072,10 +26054,10 @@ class RNBOSubpatcher_1609 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1609* operator->() {
+    RNBOSubpatcher_5151* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1609* operator->() const {
+    const RNBOSubpatcher_5151* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -27429,16 +27411,16 @@ class RNBOSubpatcher_1609 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1610 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5152 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1610()
+    RNBOSubpatcher_5152()
     {}
     
-    ~RNBOSubpatcher_1610()
+    ~RNBOSubpatcher_5152()
     {
         deallocateSignals();
     }
@@ -27730,10 +27712,10 @@ class RNBOSubpatcher_1610 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1610* operator->() {
+    RNBOSubpatcher_5152* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1610* operator->() const {
+    const RNBOSubpatcher_5152* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -28143,16 +28125,16 @@ class RNBOSubpatcher_1610 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5153 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1611()
+    RNBOSubpatcher_5153()
     {}
     
-    ~RNBOSubpatcher_1611()
+    ~RNBOSubpatcher_5153()
     {
         deallocateSignals();
     }
@@ -28710,50 +28692,56 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         case TAG("valin"):
             {
             if (TAG("pitchShifter1/number_obj-103") == objectId)
-                this->numberobj_29_valin_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-63") == objectId)
-                this->numberobj_30_valin_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-83") == objectId)
-                this->numberobj_31_valin_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-24") == objectId)
-                this->numberobj_32_valin_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-31") == objectId)
                 this->numberobj_33_valin_set(payload);
     
-            if (TAG("pitchShifter1/number_obj-80") == objectId)
+            if (TAG("pitchShifter1/number_obj-14") == objectId)
                 this->numberobj_34_valin_set(payload);
     
-            if (TAG("pitchShifter1/number_obj-70") == objectId)
+            if (TAG("pitchShifter1/number_obj-63") == objectId)
                 this->numberobj_35_valin_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-83") == objectId)
+                this->numberobj_36_valin_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-24") == objectId)
+                this->numberobj_37_valin_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-31") == objectId)
+                this->numberobj_38_valin_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-80") == objectId)
+                this->numberobj_39_valin_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-70") == objectId)
+                this->numberobj_40_valin_set(payload);
     
             break;
             }
         case TAG("format"):
             {
             if (TAG("pitchShifter1/number_obj-103") == objectId)
-                this->numberobj_29_format_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-63") == objectId)
-                this->numberobj_30_format_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-83") == objectId)
-                this->numberobj_31_format_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-24") == objectId)
-                this->numberobj_32_format_set(payload);
-    
-            if (TAG("pitchShifter1/number_obj-31") == objectId)
                 this->numberobj_33_format_set(payload);
     
-            if (TAG("pitchShifter1/number_obj-80") == objectId)
+            if (TAG("pitchShifter1/number_obj-14") == objectId)
                 this->numberobj_34_format_set(payload);
     
-            if (TAG("pitchShifter1/number_obj-70") == objectId)
+            if (TAG("pitchShifter1/number_obj-63") == objectId)
                 this->numberobj_35_format_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-83") == objectId)
+                this->numberobj_36_format_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-24") == objectId)
+                this->numberobj_37_format_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-31") == objectId)
+                this->numberobj_38_format_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-80") == objectId)
+                this->numberobj_39_format_set(payload);
+    
+            if (TAG("pitchShifter1/number_obj-70") == objectId)
+                this->numberobj_40_format_set(payload);
     
             break;
             }
@@ -28817,6 +28805,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         case TAG("setup"):
             {
             return "setup";
+            }
+        case TAG("pitchShifter1/number_obj-14"):
+            {
+            return "pitchShifter1/number_obj-14";
             }
         case TAG("pitchShifter1/number_obj-63"):
             {
@@ -28924,17 +28916,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     
     protected:
     
-    class RNBOSubpatcher_1577 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5119 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1577()
+            RNBOSubpatcher_5119()
             {}
             
-            ~RNBOSubpatcher_1577()
+            ~RNBOSubpatcher_5119()
             {
                 deallocateSignals();
             }
@@ -29213,14 +29205,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1577* operator->() {
+            RNBOSubpatcher_5119* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1577* operator->() const {
+            const RNBOSubpatcher_5119* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -29842,17 +29834,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1578 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5120 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1578()
+            RNBOSubpatcher_5120()
             {}
             
-            ~RNBOSubpatcher_1578()
+            ~RNBOSubpatcher_5120()
             {
                 deallocateSignals();
             }
@@ -30265,14 +30257,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1578* operator->() {
+            RNBOSubpatcher_5120* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1578* operator->() const {
+            const RNBOSubpatcher_5120* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -31057,17 +31049,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1579 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5121 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1579()
+            RNBOSubpatcher_5121()
             {}
             
-            ~RNBOSubpatcher_1579()
+            ~RNBOSubpatcher_5121()
             {
                 deallocateSignals();
             }
@@ -31503,14 +31495,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1579* operator->() {
+            RNBOSubpatcher_5121* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1579* operator->() const {
+            const RNBOSubpatcher_5121* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -32819,17 +32811,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1580 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5122 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1580()
+            RNBOSubpatcher_5122()
             {}
             
-            ~RNBOSubpatcher_1580()
+            ~RNBOSubpatcher_5122()
             {
                 deallocateSignals();
             }
@@ -33210,14 +33202,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1580* operator->() {
+            RNBOSubpatcher_5122* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1580* operator->() const {
+            const RNBOSubpatcher_5122* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -34821,17 +34813,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1581 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5123 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1581()
+            RNBOSubpatcher_5123()
             {}
             
-            ~RNBOSubpatcher_1581()
+            ~RNBOSubpatcher_5123()
             {
                 deallocateSignals();
             }
@@ -35098,33 +35090,57 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 switch (tag) {
                 case TAG("valin"):
                     {
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-100") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-27") == objectId)
                         this->numberobj_25_valin_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-9") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-100") == objectId)
                         this->numberobj_26_valin_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-105") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-25") == objectId)
                         this->numberobj_27_valin_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-14") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-9") == objectId)
                         this->numberobj_28_valin_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-105") == objectId)
+                        this->numberobj_29_valin_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-15") == objectId)
+                        this->numberobj_30_valin_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-14") == objectId)
+                        this->numberobj_31_valin_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-22") == objectId)
+                        this->numberobj_32_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-100") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-27") == objectId)
                         this->numberobj_25_format_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-9") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-100") == objectId)
                         this->numberobj_26_format_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-105") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-25") == objectId)
                         this->numberobj_27_format_set(payload);
             
-                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-14") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-9") == objectId)
                         this->numberobj_28_format_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-105") == objectId)
+                        this->numberobj_29_format_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-15") == objectId)
+                        this->numberobj_30_format_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-14") == objectId)
+                        this->numberobj_31_format_set(payload);
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/number_obj-22") == objectId)
+                        this->numberobj_32_format_set(payload);
             
                     break;
                     }
@@ -35146,11 +35162,26 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     }
                 case TAG("bangin"):
                     {
-                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-60") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-17") == objectId)
                         this->button_01_bangin_bang();
             
-                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-67") == objectId)
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-6") == objectId)
                         this->button_02_bangin_bang();
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-67") == objectId)
+                        this->button_03_bangin_bang();
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-60") == objectId)
+                        this->button_04_bangin_bang();
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-40") == objectId)
+                        this->button_05_bangin_bang();
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-10") == objectId)
+                        this->button_06_bangin_bang();
+            
+                    if (TAG("pitchShifter1/pitchQuantizer/button_obj-19") == objectId)
+                        this->button_07_bangin_bang();
             
                     break;
                     }
@@ -35163,13 +35194,21 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     {
                     return "valout";
                     }
-                case TAG("pitchShifter1/pitchQuantizer/number_obj-100"):
+                case TAG("pitchShifter1/pitchQuantizer/number_obj-27"):
                     {
-                    return "pitchShifter1/pitchQuantizer/number_obj-100";
+                    return "pitchShifter1/pitchQuantizer/number_obj-27";
                     }
                 case TAG("setup"):
                     {
                     return "setup";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/number_obj-100"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/number_obj-100";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/number_obj-25"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/number_obj-25";
                     }
                 case TAG("pitchShifter1/pitchQuantizer/number_obj-9"):
                     {
@@ -35179,6 +35218,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     {
                     return "pitchShifter1/pitchQuantizer/number_obj-105";
                     }
+                case TAG("pitchShifter1/pitchQuantizer/number_obj-15"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/number_obj-15";
+                    }
                 case TAG("pitchShifter1/pitchQuantizer/number_obj-14"):
                     {
                     return "pitchShifter1/pitchQuantizer/number_obj-14";
@@ -35187,13 +35230,37 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     {
                     return "bangout";
                     }
-                case TAG("pitchShifter1/pitchQuantizer/button_obj-60"):
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-17"):
                     {
-                    return "pitchShifter1/pitchQuantizer/button_obj-60";
+                    return "pitchShifter1/pitchQuantizer/button_obj-17";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-6"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/button_obj-6";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/number_obj-22"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/number_obj-22";
                     }
                 case TAG("pitchShifter1/pitchQuantizer/button_obj-67"):
                     {
                     return "pitchShifter1/pitchQuantizer/button_obj-67";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-60"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/button_obj-60";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-40"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/button_obj-40";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-10"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/button_obj-10";
+                    }
+                case TAG("pitchShifter1/pitchQuantizer/button_obj-19"):
+                    {
+                    return "pitchShifter1/pitchQuantizer/button_obj-19";
                     }
                 case TAG("valin"):
                     {
@@ -35260,14 +35327,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1581* operator->() {
+            RNBOSubpatcher_5123* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1581* operator->() const {
+            const RNBOSubpatcher_5123* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -35327,6 +35394,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 return f;
             }
             
+            template<typename... T> void post(T ...args) {
+                console->log(args...);
+            }
+            
             number fromnormalized(Index index, number normalizedValue) {
                 return this->convertFromNormalizedParameterValue(index, normalizedValue);
             }
@@ -35341,7 +35412,7 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     this->param_05_lastValue = this->param_05_value;
                 }
             
-                this->expr_30_in2_set(v);
+                this->numberobj_27_value_set(v);
             }
             
             MillisecondTime getPatcherTime() const {
@@ -35354,6 +35425,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             void numberobj_25_format_set(number v) {
                 this->numberobj_25_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void eventinlet_41_out1_bang_bang() {
+                this->ftom_01_frequency_bang();
+            }
+            
+            template<typename LISTTYPE> void eventinlet_41_out1_list_set(const LISTTYPE& v) {
+                this->ftom_01_frequency_set(v);
             }
             
             void numberobj_26_valin_set(number v) {
@@ -35380,6 +35459,30 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->numberobj_28_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
+            void numberobj_29_valin_set(number v) {
+                this->numberobj_29_value_set(v);
+            }
+            
+            void numberobj_29_format_set(number v) {
+                this->numberobj_29_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_30_valin_set(number v) {
+                this->numberobj_30_value_set(v);
+            }
+            
+            void numberobj_30_format_set(number v) {
+                this->numberobj_30_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_31_valin_set(number v) {
+                this->numberobj_31_value_set(v);
+            }
+            
+            void numberobj_31_format_set(number v) {
+                this->numberobj_31_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
             void loadbang_02_startupbang_bang() {
                 this->loadbang_02_output_bang();
             }
@@ -35390,6 +35493,26 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             void button_02_bangin_bang() {
                 this->button_02_bangval_bang();
+            }
+            
+            void numberobj_32_valin_set(number v) {
+                this->numberobj_32_value_set(v);
+            }
+            
+            void numberobj_32_format_set(number v) {
+                this->numberobj_32_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void button_03_bangin_bang() {
+                this->button_03_bangval_bang();
+            }
+            
+            void button_04_bangin_bang() {
+                this->button_04_bangval_bang();
+            }
+            
+            void button_05_bangin_bang() {
+                this->button_05_bangval_bang();
             }
             
             void metro_01_tick_bang() {
@@ -35404,6 +35527,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                         this->getEngine()->scheduleClockEvent(this, 1935387534, this->metro_01_interval + this->_currentTime);;
                     }
                 }
+            }
+            
+            void button_06_bangin_bang() {
+                this->button_06_bangval_bang();
+            }
+            
+            void button_07_bangin_bang() {
+                this->button_07_bangval_bang();
             }
             
             void deallocateSignals() {
@@ -35427,12 +35558,16 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
+                this->numberobj_25_init();
                 this->ftom_01_innerScala_init();
                 this->ftom_01_init();
-                this->numberobj_25_init();
                 this->numberobj_26_init();
                 this->numberobj_27_init();
                 this->numberobj_28_init();
+                this->numberobj_29_init();
+                this->numberobj_30_init();
+                this->numberobj_31_init();
+                this->numberobj_32_init();
             }
             
             Index getIsMuted()  {
@@ -35512,9 +35647,25 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->codebox_01_in2 = v;
             }
             
+            void numberobj_30_output_set(number v) {
+                this->codebox_01_in2_set(v);
+            }
+            
+            void numberobj_30_value_set(number v) {
+                this->numberobj_30_value_setter(v);
+                v = this->numberobj_30_value;
+                number localvalue = v;
+            
+                if (this->numberobj_30_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_30_output_set(localvalue);
+            }
+            
             void expr_33_out1_set(number v) {
                 this->expr_33_out1 = v;
-                this->codebox_01_in2_set(this->expr_33_out1);
+                this->numberobj_30_value_set(this->expr_33_out1);
             }
             
             void expr_33_in1_set(number in1) {
@@ -35529,27 +35680,27 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             void expr_32_in1_set(number in1) {
                 this->expr_32_in1 = in1;
-                this->expr_32_out1_set(trunc(this->expr_32_in1));//#map:pitchShifter1/pitchQuantizer/trunc_obj-27:1
+                this->expr_32_out1_set(trunc(this->expr_32_in1));//#map:pitchShifter1/pitchQuantizer/trunc_obj-23:1
             }
             
-            void numberobj_27_output_set(number v) {
+            void numberobj_29_output_set(number v) {
                 this->expr_32_in1_set(v);
             }
             
-            void numberobj_27_value_set(number v) {
-                this->numberobj_27_value_setter(v);
-                v = this->numberobj_27_value;
+            void numberobj_29_value_set(number v) {
+                this->numberobj_29_value_setter(v);
+                v = this->numberobj_29_value;
                 number localvalue = v;
             
-                if (this->numberobj_27_currentFormat != 6) {
+                if (this->numberobj_29_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_27_output_set(localvalue);
+                this->numberobj_29_output_set(localvalue);
             }
             
             void eventinlet_42_out1_number_set(number v) {
-                this->numberobj_27_value_set(v);
+                this->numberobj_29_value_set(v);
             }
             
             void gate_01_onoff_set(number v) {
@@ -35563,36 +35714,27 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             void expr_34_in1_set(number in1) {
                 this->expr_34_in1 = in1;
-                this->expr_34_out1_set(trunc(this->expr_34_in1));//#map:pitchShifter1/pitchQuantizer/trunc_obj-45:1
+                this->expr_34_out1_set(trunc(this->expr_34_in1));//#map:pitchShifter1/pitchQuantizer/trunc_obj-41:1
             }
             
-            void eventinlet_43_out1_number_set(number v) {
+            void numberobj_32_output_set(number v) {
                 this->expr_34_in1_set(v);
             }
             
-            void numberobj_26_output_set(number ) {}
-            
-            void numberobj_26_value_set(number v) {
-                this->numberobj_26_value_setter(v);
-                v = this->numberobj_26_value;
+            void numberobj_32_value_set(number v) {
+                this->numberobj_32_value_setter(v);
+                v = this->numberobj_32_value;
                 number localvalue = v;
             
-                if (this->numberobj_26_currentFormat != 6) {
+                if (this->numberobj_32_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_26_output_set(localvalue);
+                this->numberobj_32_output_set(localvalue);
             }
             
-            void eventoutlet_05_in1_number_set(number v) {
-                this->getPatcher()->updateTime(this->_currentTime, (ENGINE*)nullptr);
-                this->getPatcher()->p_23_out1_number_set(v);
-            }
-            
-            void codebox_01_out1_set(number v) {
-                this->codebox_01_out1 = v;
-                this->numberobj_26_value_set(this->codebox_01_out1);
-                this->eventoutlet_05_in1_number_set(this->codebox_01_out1);
+            void eventinlet_43_out1_number_set(number v) {
+                this->numberobj_32_value_set(v);
             }
             
             void numberobj_28_output_set(number ) {}
@@ -35609,9 +35751,34 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->numberobj_28_output_set(localvalue);
             }
             
+            void eventoutlet_05_in1_number_set(number v) {
+                this->getPatcher()->updateTime(this->_currentTime, (ENGINE*)nullptr);
+                this->getPatcher()->p_23_out1_number_set(v);
+            }
+            
+            void codebox_01_out1_set(number v) {
+                this->codebox_01_out1 = v;
+                this->numberobj_28_value_set(this->codebox_01_out1);
+                this->eventoutlet_05_in1_number_set(this->codebox_01_out1);
+            }
+            
+            void numberobj_31_output_set(number ) {}
+            
+            void numberobj_31_value_set(number v) {
+                this->numberobj_31_value_setter(v);
+                v = this->numberobj_31_value;
+                number localvalue = v;
+            
+                if (this->numberobj_31_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_31_output_set(localvalue);
+            }
+            
             void codebox_01_out2_set(number v) {
                 this->codebox_01_out2 = v;
-                this->numberobj_28_value_set(this->codebox_01_out2);
+                this->numberobj_31_value_set(this->codebox_01_out2);
             }
             
             void codebox_01_in1_set(number in1) {
@@ -35655,12 +35822,39 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     }//#map:_###_obj_###_:25
                 }//#map:pitchShifter1/pitchQuantizer/codebox_obj-7:10
             
+                this->post(scalaFile);//#map:pitchShifter1/pitchQuantizer/codebox_obj-7:49
                 this->codebox_01_out1_set(midiQuantized);//#map:pitchShifter1/pitchQuantizer/codebox_obj-7:50
                 this->codebox_01_out2_set(delta);//#map:pitchShifter1/pitchQuantizer/codebox_obj-7:51
             }
             
-            void numberobj_25_output_set(number v) {
+            void numberobj_26_output_set(number v) {
                 this->codebox_01_in1_set(v);
+            }
+            
+            void numberobj_26_value_set(number v) {
+                this->numberobj_26_value_setter(v);
+                v = this->numberobj_26_value;
+                number localvalue = v;
+            
+                if (this->numberobj_26_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_26_output_set(localvalue);
+            }
+            
+            void expr_30_out1_set(number v) {
+                this->expr_30_out1 = v;
+                this->numberobj_26_value_set(this->expr_30_out1);
+            }
+            
+            void expr_30_in1_set(number in1) {
+                this->expr_30_in1 = in1;
+                this->expr_30_out1_set(this->expr_30_in1 + this->expr_30_in2);//#map:pitchShifter1/pitchQuantizer/+_obj-28:1
+            }
+            
+            void numberobj_25_output_set(number v) {
+                this->expr_30_in1_set(v);
             }
             
             void numberobj_25_value_set(number v) {
@@ -35675,28 +35869,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->numberobj_25_output_set(localvalue);
             }
             
-            void expr_30_out1_set(number v) {
-                this->expr_30_out1 = v;
-                this->numberobj_25_value_set(this->expr_30_out1);
-            }
-            
-            void expr_30_in1_set(number in1) {
-                this->expr_30_in1 = in1;
-                this->expr_30_out1_set(this->expr_30_in1 + this->expr_30_in2);//#map:pitchShifter1/pitchQuantizer/+_obj-28:1
-            }
-            
-            void expr_30_in2_set(number v) {
-                this->expr_30_in2 = v;
-                this->expr_30_in1_set(this->expr_30_in1);
-            }
-            
             template<typename LISTTYPE> void ftom_01_out_set(const LISTTYPE& v) {
                 {
-                    if (v->length > 1)
-                        this->expr_30_in2_set(v[1]);
-            
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->expr_30_in1_set(converted);
+                    this->numberobj_25_value_set(converted);
                 }
             }
             
@@ -35724,6 +35900,76 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 }
             }
             
+            void numberobj_29_value_bang() {
+                number v = this->numberobj_29_value;
+                number localvalue = v;
+            
+                if (this->numberobj_29_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_29_output_set(localvalue);
+            }
+            
+            void eventinlet_42_out1_bang_bang() {
+                this->numberobj_29_value_bang();
+            }
+            
+            template<typename LISTTYPE> void eventinlet_42_out1_list_set(const LISTTYPE& v) {
+                {
+                    number converted = (v->length > 0 ? v[0] : 0);
+                    this->numberobj_29_value_set(converted);
+                }
+            }
+            
+            void numberobj_32_value_bang() {
+                number v = this->numberobj_32_value;
+                number localvalue = v;
+            
+                if (this->numberobj_32_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_32_output_set(localvalue);
+            }
+            
+            void eventinlet_43_out1_bang_bang() {
+                this->numberobj_32_value_bang();
+            }
+            
+            template<typename LISTTYPE> void eventinlet_43_out1_list_set(const LISTTYPE& v) {
+                {
+                    number converted = (v->length > 0 ? v[0] : 0);
+                    this->numberobj_32_value_set(converted);
+                }
+            }
+            
+            number param_05_value_constrain(number v) const {
+                v = (v > 24 ? 24 : (v < -24 ? -24 : v));
+                return v;
+            }
+            
+            void expr_30_in2_set(number v) {
+                this->expr_30_in2 = v;
+                this->expr_30_in1_set(this->expr_30_in1);
+            }
+            
+            void numberobj_27_output_set(number v) {
+                this->expr_30_in2_set(v);
+            }
+            
+            void numberobj_27_value_set(number v) {
+                this->numberobj_27_value_setter(v);
+                v = this->numberobj_27_value;
+                number localvalue = v;
+            
+                if (this->numberobj_27_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_27_output_set(localvalue);
+            }
+            
             void ftom_01_frequency_bang() {
                 list v = this->ftom_01_frequency;
                 list tmp = list();
@@ -35741,54 +35987,8 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 }
             }
             
-            void eventinlet_41_out1_bang_bang() {
-                this->ftom_01_frequency_bang();
-            }
-            
-            template<typename LISTTYPE> void eventinlet_41_out1_list_set(const LISTTYPE& v) {
-                this->ftom_01_frequency_set(v);
-            }
-            
-            void numberobj_27_value_bang() {
-                number v = this->numberobj_27_value;
-                number localvalue = v;
-            
-                if (this->numberobj_27_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_27_output_set(localvalue);
-            }
-            
-            void eventinlet_42_out1_bang_bang() {
-                this->numberobj_27_value_bang();
-            }
-            
-            template<typename LISTTYPE> void eventinlet_42_out1_list_set(const LISTTYPE& v) {
-                {
-                    number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_27_value_set(converted);
-                }
-            }
-            
-            void expr_34_in1_bang() {
-                this->expr_34_out1_set(trunc(this->expr_34_in1));//#map:pitchShifter1/pitchQuantizer/trunc_obj-45:1
-            }
-            
-            void eventinlet_43_out1_bang_bang() {
-                this->expr_34_in1_bang();
-            }
-            
-            template<typename LISTTYPE> void eventinlet_43_out1_list_set(const LISTTYPE& v) {
-                {
-                    number converted = (v->length > 0 ? v[0] : 0);
-                    this->expr_34_in1_set(converted);
-                }
-            }
-            
-            number param_05_value_constrain(number v) const {
-                v = (v > 24 ? 24 : (v < -24 ? -24 : v));
-                return v;
+            void loadbang_02_output_bang() {
+                this->numberobj_29_value_bang();
             }
             
             template<typename LISTTYPE> void codebox_01_in3_set(const LISTTYPE& v) {
@@ -35801,11 +36001,7 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             }
             
             void scalascl_01_trigger_bang() {
-                this->scalascl_01_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 15, 8});
-            }
-            
-            void loadbang_02_output_bang() {
-                this->scalascl_01_trigger_bang();
+                this->scalascl_01_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 6, 5, 4, 3, 3, 2, 5, 3, 7, 4});
             }
             
             void button_01_output_bang() {
@@ -35823,7 +36019,7 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             }
             
             void scalascl_02_trigger_bang() {
-                this->scalascl_02_out_set(listbase<number, 15>{7, 1, 1, 10, 9, 6, 5, 4, 3, 3, 2, 8, 5, 16, 9});
+                this->scalascl_02_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 25, 18, 3, 2, 5, 3, 15, 8});
             }
             
             void button_02_output_bang() {
@@ -35835,12 +36031,107 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->button_02_output_bang();
             }
             
+            template<typename LISTTYPE> void scalascl_03_out_set(const LISTTYPE& v) {
+                this->scalascl_03_out = jsCreateListCopy(v);
+                this->codebox_01_in3_set(v);
+            }
+            
+            void scalascl_03_trigger_bang() {
+                this->scalascl_03_out_set(listbase<number, 15>{7, 1, 1, 10, 9, 6, 5, 4, 3, 3, 2, 8, 5, 7, 4});
+            }
+            
+            void button_03_output_bang() {
+                this->scalascl_03_trigger_bang();
+            }
+            
+            void button_03_bangval_bang() {
+                ;
+                this->button_03_output_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_04_out_set(const LISTTYPE& v) {
+                this->scalascl_04_out = jsCreateListCopy(v);
+                this->codebox_01_in3_set(v);
+            }
+            
+            void scalascl_04_trigger_bang() {
+                this->scalascl_04_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 15, 8});
+            }
+            
+            void button_04_output_bang() {
+                this->scalascl_04_trigger_bang();
+            }
+            
+            void button_04_bangval_bang() {
+                ;
+                this->button_04_output_bang();
+            }
+            
+            void button_05_output_bang() {}
+            
+            void button_05_bangval_bang() {
+                ;
+                this->button_05_output_bang();
+            }
+            
             void gate_01_out1_bang_bang() {
-                this->button_01_bangval_bang();
+                this->button_02_bangval_bang();
             }
             
             void gate_01_out2_bang_bang() {
-                this->button_02_bangval_bang();
+                this->button_04_bangval_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_05_out_set(const LISTTYPE& v) {
+                this->scalascl_05_out = jsCreateListCopy(v);
+                this->codebox_01_in3_set(v);
+            }
+            
+            void scalascl_05_trigger_bang() {
+                this->scalascl_05_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 7, 4});
+            }
+            
+            void button_06_output_bang() {
+                this->scalascl_05_trigger_bang();
+            }
+            
+            void button_06_bangval_bang() {
+                ;
+                this->button_06_output_bang();
+            }
+            
+            void gate_01_out3_bang_bang() {
+                this->button_06_bangval_bang();
+            }
+            
+            void gate_01_out4_bang_bang() {
+                this->button_01_bangval_bang();
+            }
+            
+            void gate_01_out5_bang_bang() {
+                this->button_03_bangval_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_06_out_set(const LISTTYPE& v) {
+                this->scalascl_06_out = jsCreateListCopy(v);
+                this->codebox_01_in3_set(v);
+            }
+            
+            void scalascl_06_trigger_bang() {
+                this->scalascl_06_out_set(listbase<number, 15>{7, 1, 1, 16, 15, 6, 5, 4, 3, 3, 2, 8, 5, 7, 4});
+            }
+            
+            void button_07_output_bang() {
+                this->scalascl_06_trigger_bang();
+            }
+            
+            void button_07_bangval_bang() {
+                ;
+                this->button_07_output_bang();
+            }
+            
+            void gate_01_out6_bang_bang() {
+                this->button_07_bangval_bang();
             }
             
             void gate_01_input_bang_bang() {
@@ -35848,9 +36139,18 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     this->gate_01_out1_bang_bang();
                 else if (this->gate_01_onoff == 2)
                     this->gate_01_out2_bang_bang();
+                else if (this->gate_01_onoff == 3)
+                    this->gate_01_out3_bang_bang();
+                else if (this->gate_01_onoff == 4)
+                    this->gate_01_out4_bang_bang();
+                else if (this->gate_01_onoff == 5)
+                    this->gate_01_out5_bang_bang();
+                else if (this->gate_01_onoff == 6)
+                    this->gate_01_out6_bang_bang();
             }
             
             void metro_01_tickout_bang() {
+                this->button_05_bangval_bang();
                 this->gate_01_input_bang_bang();
             }
             
@@ -35950,8 +36250,63 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->numberobj_28_value = localvalue;
             }
             
+            void numberobj_29_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_29_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_29_value = localvalue;
+            }
+            
+            void numberobj_30_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_30_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_30_value = localvalue;
+            }
+            
+            void numberobj_31_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_31_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_31_value = localvalue;
+            }
+            
+            void numberobj_32_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_32_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_32_value = localvalue;
+            }
+            
             void metro_01_interval_setter(number v) {
                 this->metro_01_interval = (v > 0 ? v : 0);
+            }
+            
+            void numberobj_25_init() {
+                this->numberobj_25_currentFormat = 6;
+            }
+            
+            void numberobj_25_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_25_value;
+            }
+            
+            void numberobj_25_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_25_value_set(preset["value"]);
             }
             
             number ftom_01_innerFtoM_next(number frequency, number tuning) {
@@ -36333,32 +36688,6 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->ftom_01_innerScala_update(this->ftom_01_scale, this->ftom_01_map);
             }
             
-            void numberobj_25_init() {
-                this->numberobj_25_currentFormat = 6;
-            }
-            
-            void numberobj_25_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_25_value;
-            }
-            
-            void numberobj_25_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_25_value_set(preset["value"]);
-            }
-            
-            void param_05_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->param_05_value;
-            }
-            
-            void param_05_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->param_05_value_set(preset["value"]);
-            }
-            
             void numberobj_26_init() {
                 this->numberobj_26_currentFormat = 6;
             }
@@ -36372,6 +36701,32 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     return;
             
                 this->numberobj_26_value_set(preset["value"]);
+            }
+            
+            void numberobj_27_init() {
+                this->numberobj_27_currentFormat = 6;
+            }
+            
+            void numberobj_27_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_27_value;
+            }
+            
+            void numberobj_27_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_27_value_set(preset["value"]);
+            }
+            
+            void param_05_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->param_05_value;
+            }
+            
+            void param_05_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->param_05_value_set(preset["value"]);
             }
             
             number codebox_01_mtof_next(number midivalue, number tuning) {
@@ -36398,21 +36753,6 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 this->codebox_01_mtof_lastTuning = 0;
             }
             
-            void numberobj_27_init() {
-                this->numberobj_27_currentFormat = 6;
-            }
-            
-            void numberobj_27_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_27_value;
-            }
-            
-            void numberobj_27_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_27_value_set(preset["value"]);
-            }
-            
             void numberobj_28_init() {
                 this->numberobj_28_currentFormat = 6;
             }
@@ -36426,6 +36766,66 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                     return;
             
                 this->numberobj_28_value_set(preset["value"]);
+            }
+            
+            void numberobj_29_init() {
+                this->numberobj_29_currentFormat = 6;
+            }
+            
+            void numberobj_29_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_29_value;
+            }
+            
+            void numberobj_29_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_29_value_set(preset["value"]);
+            }
+            
+            void numberobj_30_init() {
+                this->numberobj_30_currentFormat = 6;
+            }
+            
+            void numberobj_30_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_30_value;
+            }
+            
+            void numberobj_30_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_30_value_set(preset["value"]);
+            }
+            
+            void numberobj_31_init() {
+                this->numberobj_31_currentFormat = 6;
+            }
+            
+            void numberobj_31_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_31_value;
+            }
+            
+            void numberobj_31_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_31_value_set(preset["value"]);
+            }
+            
+            void numberobj_32_init() {
+                this->numberobj_32_currentFormat = 6;
+            }
+            
+            void numberobj_32_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_32_value;
+            }
+            
+            void numberobj_32_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_32_value_set(preset["value"]);
             }
             
             void metro_01_onTransportChanged(number ) {}
@@ -36472,33 +36872,45 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             void assign_defaults()
             {
+                numberobj_25_value = 0;
+                numberobj_25_value_setter(numberobj_25_value);
                 ftom_01_base = 440;
+                numberobj_26_value = 0;
+                numberobj_26_value_setter(numberobj_26_value);
                 expr_30_in1 = 0;
                 expr_30_in2 = 0;
                 expr_30_out1 = 0;
-                numberobj_25_value = 0;
-                numberobj_25_value_setter(numberobj_25_value);
+                numberobj_27_value = 0;
+                numberobj_27_value_setter(numberobj_27_value);
                 param_05_value = 7;
-                numberobj_26_value = 0;
-                numberobj_26_value_setter(numberobj_26_value);
                 codebox_01_in1 = 0;
                 codebox_01_in2 = 0;
                 codebox_01_out1 = 0;
                 codebox_01_out2 = 0;
-                numberobj_27_value = 0;
-                numberobj_27_value_setter(numberobj_27_value);
+                numberobj_28_value = 0;
+                numberobj_28_value_setter(numberobj_28_value);
                 expr_32_in1 = 0;
                 expr_32_out1 = 0;
+                numberobj_29_value = 0;
+                numberobj_29_value_setter(numberobj_29_value);
                 expr_33_in1 = 0;
                 expr_33_in2 = 60;
                 expr_33_out1 = 0;
-                numberobj_28_value = 0;
-                numberobj_28_value_setter(numberobj_28_value);
+                numberobj_30_value = 0;
+                numberobj_30_value_setter(numberobj_30_value);
+                numberobj_31_value = 0;
+                numberobj_31_value_setter(numberobj_31_value);
                 expr_34_in1 = 0;
                 expr_34_out1 = 0;
+                numberobj_32_value = 0;
+                numberobj_32_value_setter(numberobj_32_value);
                 gate_01_onoff = 0;
                 gate_01_out1_number = 0;
                 gate_01_out2_number = 0;
+                gate_01_out3_number = 0;
+                gate_01_out4_number = 0;
+                gate_01_out5_number = 0;
+                gate_01_out6_number = 0;
                 metro_01_on = 1;
                 metro_01_interval = 200;
                 metro_01_interval_setter(metro_01_interval);
@@ -36518,6 +36930,8 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
+                numberobj_25_currentFormat = 6;
+                numberobj_25_lastValue = 0;
                 ftom_01_innerFtoM_lastInValue = 0;
                 ftom_01_innerFtoM_lastOutValue = 0;
                 ftom_01_innerFtoM_lastTuning = 0;
@@ -36536,18 +36950,24 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 ftom_01_innerScala_kbmOctaveDegree = 12;
                 ftom_01_innerScala_kbmMapSize = 0;
                 ftom_01_innerScala_refFreq = 261.63;
-                numberobj_25_currentFormat = 6;
-                numberobj_25_lastValue = 0;
-                param_05_lastValue = 0;
                 numberobj_26_currentFormat = 6;
                 numberobj_26_lastValue = 0;
+                numberobj_27_currentFormat = 6;
+                numberobj_27_lastValue = 0;
+                param_05_lastValue = 0;
                 codebox_01_mtof_lastInValue = 0;
                 codebox_01_mtof_lastOutValue = 0;
                 codebox_01_mtof_lastTuning = 0;
-                numberobj_27_currentFormat = 6;
-                numberobj_27_lastValue = 0;
                 numberobj_28_currentFormat = 6;
                 numberobj_28_lastValue = 0;
+                numberobj_29_currentFormat = 6;
+                numberobj_29_lastValue = 0;
+                numberobj_30_currentFormat = 6;
+                numberobj_30_lastValue = 0;
+                numberobj_31_currentFormat = 6;
+                numberobj_31_lastValue = 0;
+                numberobj_32_currentFormat = 6;
+                numberobj_32_lastValue = 0;
                 metro_01_last = -1;
                 metro_01_next = -1;
                 ctlin_01_status = 0;
@@ -36562,39 +36982,55 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             
             // member variables
             
+                number numberobj_25_value;
                 list ftom_01_frequency;
                 list ftom_01_scale;
                 list ftom_01_map;
                 number ftom_01_base;
+                number numberobj_26_value;
                 number expr_30_in1;
                 number expr_30_in2;
                 number expr_30_out1;
-                number numberobj_25_value;
+                number numberobj_27_value;
                 number param_05_value;
-                number numberobj_26_value;
                 number codebox_01_in1;
                 number codebox_01_in2;
                 list codebox_01_in3;
                 number codebox_01_out1;
                 number codebox_01_out2;
-                number numberobj_27_value;
+                number numberobj_28_value;
                 number expr_32_in1;
                 number expr_32_out1;
+                number numberobj_29_value;
                 number expr_33_in1;
                 number expr_33_in2;
                 number expr_33_out1;
-                number numberobj_28_value;
+                number numberobj_30_value;
+                number numberobj_31_value;
+                list scalascl_01_out;
+                list scalascl_02_out;
                 number expr_34_in1;
                 number expr_34_out1;
-                list scalascl_01_out;
+                number numberobj_32_value;
                 number gate_01_onoff;
                 number gate_01_out1_number;
                 list gate_01_out1_list;
                 number gate_01_out2_number;
                 list gate_01_out2_list;
+                number gate_01_out3_number;
+                list gate_01_out3_list;
+                number gate_01_out4_number;
+                list gate_01_out4_list;
+                number gate_01_out5_number;
+                list gate_01_out5_list;
+                number gate_01_out6_number;
+                list gate_01_out6_list;
+                list scalascl_03_out;
+                list scalascl_04_out;
                 number metro_01_on;
                 number metro_01_interval;
-                list scalascl_02_out;
+                list scalascl_05_out;
+                list scalascl_06_out;
                 number ctlin_01_input;
                 number ctlin_01_controller;
                 number ctlin_01_channel;
@@ -36611,6 +37047,8 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
+                Int numberobj_25_currentFormat;
+                number numberobj_25_lastValue;
                 number ftom_01_innerFtoM_lastInValue;
                 number ftom_01_innerFtoM_lastOutValue;
                 number ftom_01_innerFtoM_lastTuning;
@@ -36631,19 +37069,25 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 Int ftom_01_innerScala_kbmOctaveDegree;
                 Index ftom_01_innerScala_kbmMapSize;
                 number ftom_01_innerScala_refFreq;
-                Int numberobj_25_currentFormat;
-                number numberobj_25_lastValue;
-                number param_05_lastValue;
                 Int numberobj_26_currentFormat;
                 number numberobj_26_lastValue;
+                Int numberobj_27_currentFormat;
+                number numberobj_27_lastValue;
+                number param_05_lastValue;
                 number codebox_01_mtof_lastInValue;
                 number codebox_01_mtof_lastOutValue;
                 number codebox_01_mtof_lastTuning;
                 SampleBufferRef codebox_01_mtof_buffer;
-                Int numberobj_27_currentFormat;
-                number numberobj_27_lastValue;
                 Int numberobj_28_currentFormat;
                 number numberobj_28_lastValue;
+                Int numberobj_29_currentFormat;
+                number numberobj_29_lastValue;
+                Int numberobj_30_currentFormat;
+                number numberobj_30_lastValue;
+                Int numberobj_31_currentFormat;
+                number numberobj_31_lastValue;
+                Int numberobj_32_currentFormat;
+                number numberobj_32_lastValue;
                 MillisecondTime metro_01_last;
                 MillisecondTime metro_01_next;
                 Int ctlin_01_status;
@@ -36657,17 +37101,17 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1582 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5124 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1611;
+            friend class RNBOSubpatcher_5153;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1582()
+            RNBOSubpatcher_5124()
             {}
             
-            ~RNBOSubpatcher_1582()
+            ~RNBOSubpatcher_5124()
             {
                 deallocateSignals();
             }
@@ -37048,14 +37492,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1582* operator->() {
+            RNBOSubpatcher_5124* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1582* operator->() const {
+            const RNBOSubpatcher_5124* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1611* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1611 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5153* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5153 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -38665,10 +39109,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1611* operator->() {
+    RNBOSubpatcher_5153* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1611* operator->() const {
+    const RNBOSubpatcher_5153* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -38750,60 +39194,6 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         return this->_currentTime;
     }
     
-    void numberobj_29_valin_set(number v) {
-        this->numberobj_29_value_set(v);
-    }
-    
-    void numberobj_29_format_set(number v) {
-        this->numberobj_29_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-    }
-    
-    void eventinlet_44_out1_bang_bang() {
-        this->p_23_in1_bang_bang();
-        this->ftom_02_frequency_bang();
-    }
-    
-    template<typename LISTTYPE> void eventinlet_44_out1_list_set(const LISTTYPE& v) {
-        this->p_23_in1_list_set(v);
-        this->ftom_02_frequency_set(v);
-    }
-    
-    void numberobj_30_valin_set(number v) {
-        this->numberobj_30_value_set(v);
-    }
-    
-    void numberobj_30_format_set(number v) {
-        this->numberobj_30_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-    }
-    
-    void numberobj_31_valin_set(number v) {
-        this->numberobj_31_value_set(v);
-    }
-    
-    void numberobj_31_format_set(number v) {
-        this->numberobj_31_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-    }
-    
-    void numberobj_32_valin_set(number v) {
-        this->numberobj_32_value_set(v);
-    }
-    
-    void numberobj_32_format_set(number v) {
-        this->numberobj_32_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-    }
-    
-    void eventinlet_45_out1_bang_bang() {
-        this->p_23_in2_bang_bang();
-    }
-    
-    template<typename LISTTYPE> void eventinlet_45_out1_list_set(const LISTTYPE& v) {
-        this->p_23_in2_list_set(v);
-    }
-    
-    void loadbang_03_startupbang_bang() {
-        this->loadbang_03_output_bang();
-    }
-    
     void numberobj_33_valin_set(number v) {
         this->numberobj_33_value_set(v);
     }
@@ -38826,6 +39216,69 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     
     void numberobj_35_format_set(number v) {
         this->numberobj_35_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    }
+    
+    void numberobj_36_valin_set(number v) {
+        this->numberobj_36_value_set(v);
+    }
+    
+    void numberobj_36_format_set(number v) {
+        this->numberobj_36_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    }
+    
+    void eventinlet_44_out1_bang_bang() {
+        this->numberobj_34_value_bang();
+    }
+    
+    template<typename LISTTYPE> void eventinlet_44_out1_list_set(const LISTTYPE& v) {
+        {
+            number converted = (v->length > 0 ? v[0] : 0);
+            this->numberobj_34_value_set(converted);
+        }
+    }
+    
+    void numberobj_37_valin_set(number v) {
+        this->numberobj_37_value_set(v);
+    }
+    
+    void numberobj_37_format_set(number v) {
+        this->numberobj_37_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    }
+    
+    void eventinlet_45_out1_bang_bang() {
+        this->p_23_in2_bang_bang();
+    }
+    
+    template<typename LISTTYPE> void eventinlet_45_out1_list_set(const LISTTYPE& v) {
+        this->p_23_in2_list_set(v);
+    }
+    
+    void loadbang_03_startupbang_bang() {
+        this->loadbang_03_output_bang();
+    }
+    
+    void numberobj_38_valin_set(number v) {
+        this->numberobj_38_value_set(v);
+    }
+    
+    void numberobj_38_format_set(number v) {
+        this->numberobj_38_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    }
+    
+    void numberobj_39_valin_set(number v) {
+        this->numberobj_39_value_set(v);
+    }
+    
+    void numberobj_39_format_set(number v) {
+        this->numberobj_39_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    }
+    
+    void numberobj_40_valin_set(number v) {
+        this->numberobj_40_value_set(v);
+    }
+    
+    void numberobj_40_format_set(number v) {
+        this->numberobj_40_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
     void eventinlet_46_out1_bang_bang() {
@@ -38869,15 +39322,16 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     void setProbingTarget(MessageTag ) {}
     
     void initializeObjects() {
-        this->numberobj_29_init();
-        this->ftom_02_innerScala_init();
-        this->ftom_02_init();
-        this->numberobj_30_init();
-        this->numberobj_31_init();
-        this->numberobj_32_init();
         this->numberobj_33_init();
         this->numberobj_34_init();
+        this->ftom_02_innerScala_init();
+        this->ftom_02_init();
         this->numberobj_35_init();
+        this->numberobj_36_init();
+        this->numberobj_37_init();
+        this->numberobj_38_init();
+        this->numberobj_39_init();
+        this->numberobj_40_init();
         this->p_19->initializeObjects();
         this->p_20->initializeObjects();
         this->p_21->initializeObjects();
@@ -39106,27 +39560,27 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_33_output_set(number v) {
+    void numberobj_38_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_03_segments_set(converted);
         }
     }
     
-    void numberobj_33_value_set(number v) {
-        this->numberobj_33_value_setter(v);
-        v = this->numberobj_33_value;
+    void numberobj_38_value_set(number v) {
+        this->numberobj_38_value_setter(v);
+        v = this->numberobj_38_value;
         number localvalue = v;
     
-        if (this->numberobj_33_currentFormat != 6) {
+        if (this->numberobj_38_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_33_output_set(localvalue);
+        this->numberobj_38_output_set(localvalue);
     }
     
     void p_21_out2_number_set(number v) {
-        this->numberobj_33_value_set(v);
+        this->numberobj_38_value_set(v);
     }
     
     void linetilde_02_time_set(number v) {
@@ -39199,27 +39653,27 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_31_output_set(number v) {
+    void numberobj_36_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_02_segments_set(converted);
         }
     }
     
-    void numberobj_31_value_set(number v) {
-        this->numberobj_31_value_setter(v);
-        v = this->numberobj_31_value;
+    void numberobj_36_value_set(number v) {
+        this->numberobj_36_value_setter(v);
+        v = this->numberobj_36_value;
         number localvalue = v;
     
-        if (this->numberobj_31_currentFormat != 6) {
+        if (this->numberobj_36_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_31_output_set(localvalue);
+        this->numberobj_36_output_set(localvalue);
     }
     
     void p_21_out1_number_set(number v) {
-        this->numberobj_31_value_set(v);
+        this->numberobj_36_value_set(v);
     }
     
     void p_21_in1_number_set(number v) {
@@ -39227,13 +39681,13 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->p_21->eventinlet_38_out1_number_set(v);
     }
     
-    void numberobj_30_output_set(number v) {
+    void numberobj_35_output_set(number v) {
         this->p_21_in1_number_set(v);
     }
     
-    void numberobj_30_value_set(number v) {
-        this->numberobj_30_value_setter(v);
-        v = this->numberobj_30_value;
+    void numberobj_35_value_set(number v) {
+        this->numberobj_35_value_setter(v);
+        v = this->numberobj_35_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -24) {
@@ -39244,16 +39698,16 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             localvalue = 24;
         }
     
-        if (this->numberobj_30_currentFormat != 6) {
+        if (this->numberobj_35_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_30_output_set(localvalue);
+        this->numberobj_35_output_set(localvalue);
     }
     
     void expr_35_out1_set(number v) {
         this->expr_35_out1 = v;
-        this->numberobj_30_value_set(this->expr_35_out1);
+        this->numberobj_35_value_set(this->expr_35_out1);
     }
     
     void expr_35_in1_set(number in1) {
@@ -39299,13 +39753,29 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         }
     }
     
-    void eventinlet_44_out1_number_set(number v) {
+    void numberobj_34_output_set(number v) {
         this->p_23_in1_number_set(v);
     
         {
             listbase<number, 1> converted = {v};
             this->ftom_02_frequency_set(converted);
         }
+    }
+    
+    void numberobj_34_value_set(number v) {
+        this->numberobj_34_value_setter(v);
+        v = this->numberobj_34_value;
+        number localvalue = v;
+    
+        if (this->numberobj_34_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_34_output_set(localvalue);
+    }
+    
+    void eventinlet_44_out1_number_set(number v) {
+        this->numberobj_34_value_set(v);
     }
     
     void xfade_tilde_20_pos_set(number v) {
@@ -39316,48 +39786,32 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->xfade_tilde_19_pos = v;
     }
     
-    void numberobj_29_output_set(number v) {
+    void numberobj_33_output_set(number v) {
         this->xfade_tilde_20_pos_set(v);
         this->xfade_tilde_19_pos_set(v);
     }
     
-    void numberobj_29_value_set(number v) {
-        this->numberobj_29_value_setter(v);
-        v = this->numberobj_29_value;
+    void numberobj_33_value_set(number v) {
+        this->numberobj_33_value_setter(v);
+        v = this->numberobj_33_value;
         number localvalue = v;
     
-        if (this->numberobj_29_currentFormat != 6) {
+        if (this->numberobj_33_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_29_output_set(localvalue);
+        this->numberobj_33_output_set(localvalue);
     }
     
-    void p_23_in1_bang_bang() {
-        this->p_23->updateTime(this->_currentTime, (ENGINE*)nullptr);
-        this->p_23->eventinlet_41_out1_bang_bang();
-    }
+    void numberobj_34_value_bang() {
+        number v = this->numberobj_34_value;
+        number localvalue = v;
     
-    void ftom_02_frequency_bang() {
-        list v = this->ftom_02_frequency;
-        list tmp = list();
-    
-        for (Int i = 0; i < this->ftom_02_frequency->length; i++) {
-            number v = this->ftom_02_innerFtoM_next(this->ftom_02_frequency[(Index)i], this->ftom_02_base);
-    
-            if (1 == 0 || v != -999.0) {
-                tmp->push(v);
-            }
+        if (this->numberobj_34_currentFormat != 6) {
+            localvalue = trunc(localvalue);
         }
     
-        if (1 == 0 || tmp->length > 0) {
-            this->ftom_02_out_set(tmp);
-        }
-    }
-    
-    template<typename LISTTYPE> void p_23_in1_list_set(const LISTTYPE& v) {
-        this->p_23->updateTime(this->_currentTime, (ENGINE*)nullptr);
-        this->p_23->eventinlet_41_out1_list_set(v);
+        this->numberobj_34_output_set(localvalue);
     }
     
     void p_21_in2_number_set(number v) {
@@ -39365,13 +39819,13 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->p_21->eventinlet_39_out1_number_set(v);
     }
     
-    void numberobj_32_output_set(number v) {
+    void numberobj_37_output_set(number v) {
         this->p_21_in2_number_set(v);
     }
     
-    void numberobj_32_value_set(number v) {
-        this->numberobj_32_value_setter(v);
-        v = this->numberobj_32_value;
+    void numberobj_37_value_set(number v) {
+        this->numberobj_37_value_setter(v);
+        v = this->numberobj_37_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -100) {
@@ -39382,11 +39836,11 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             localvalue = 100;
         }
     
-        if (this->numberobj_32_currentFormat != 6) {
+        if (this->numberobj_37_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_32_output_set(localvalue);
+        this->numberobj_37_output_set(localvalue);
     }
     
     void p_23_in2_bang_bang() {
@@ -39469,27 +39923,27 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_34_output_set(number v) {
+    void numberobj_39_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_04_segments_set(converted);
         }
     }
     
-    void numberobj_34_value_set(number v) {
-        this->numberobj_34_value_setter(v);
-        v = this->numberobj_34_value;
+    void numberobj_39_value_set(number v) {
+        this->numberobj_39_value_setter(v);
+        v = this->numberobj_39_value;
         number localvalue = v;
     
-        if (this->numberobj_34_currentFormat != 6) {
+        if (this->numberobj_39_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_34_output_set(localvalue);
+        this->numberobj_39_output_set(localvalue);
     }
     
     void mstosamps_02_out1_set(number v) {
-        this->numberobj_34_value_set(v);
+        this->numberobj_39_value_set(v);
     }
     
     void mstosamps_02_ms_set(number ms) {
@@ -39506,14 +39960,14 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->p_21->eventinlet_40_out1_number_set(v);
     }
     
-    void numberobj_35_output_set(number v) {
+    void numberobj_40_output_set(number v) {
         this->mstosamps_02_ms_set(v);
         this->p_21_in3_number_set(v);
     }
     
-    void numberobj_35_value_set(number v) {
-        this->numberobj_35_value_setter(v);
-        v = this->numberobj_35_value;
+    void numberobj_40_value_set(number v) {
+        this->numberobj_40_value_setter(v);
+        v = this->numberobj_40_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 2) {
@@ -39524,15 +39978,15 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             localvalue = 200;
         }
     
-        if (this->numberobj_35_currentFormat != 6) {
+        if (this->numberobj_40_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_35_output_set(localvalue);
+        this->numberobj_40_output_set(localvalue);
     }
     
     void floatnum_02_out_set(number v) {
-        this->numberobj_35_value_set(v);
+        this->numberobj_40_value_set(v);
     }
     
     void floatnum_02_input_bang_bang() {
@@ -39888,62 +40342,6 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->stackprotect_count = __stackprotect_count;
     }
     
-    void numberobj_29_value_setter(number v) {
-        number localvalue = v;
-    
-        if (this->numberobj_29_currentFormat != 6) {
-            localvalue = trunc(localvalue);
-        }
-    
-        this->numberobj_29_value = localvalue;
-    }
-    
-    void numberobj_30_value_setter(number v) {
-        number localvalue = v;
-    
-        if ((bool)(true) && localvalue < -24) {
-            localvalue = -24;
-        }
-    
-        if ((bool)(true) && localvalue > 24) {
-            localvalue = 24;
-        }
-    
-        if (this->numberobj_30_currentFormat != 6) {
-            localvalue = trunc(localvalue);
-        }
-    
-        this->numberobj_30_value = localvalue;
-    }
-    
-    void numberobj_31_value_setter(number v) {
-        number localvalue = v;
-    
-        if (this->numberobj_31_currentFormat != 6) {
-            localvalue = trunc(localvalue);
-        }
-    
-        this->numberobj_31_value = localvalue;
-    }
-    
-    void numberobj_32_value_setter(number v) {
-        number localvalue = v;
-    
-        if ((bool)(true) && localvalue < -100) {
-            localvalue = -100;
-        }
-    
-        if ((bool)(true) && localvalue > 100) {
-            localvalue = 100;
-        }
-    
-        if (this->numberobj_32_currentFormat != 6) {
-            localvalue = trunc(localvalue);
-        }
-    
-        this->numberobj_32_value = localvalue;
-    }
-    
     void numberobj_33_value_setter(number v) {
         number localvalue = v;
     
@@ -39967,6 +40365,72 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     void numberobj_35_value_setter(number v) {
         number localvalue = v;
     
+        if ((bool)(true) && localvalue < -24) {
+            localvalue = -24;
+        }
+    
+        if ((bool)(true) && localvalue > 24) {
+            localvalue = 24;
+        }
+    
+        if (this->numberobj_35_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_35_value = localvalue;
+    }
+    
+    void numberobj_36_value_setter(number v) {
+        number localvalue = v;
+    
+        if (this->numberobj_36_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_36_value = localvalue;
+    }
+    
+    void numberobj_37_value_setter(number v) {
+        number localvalue = v;
+    
+        if ((bool)(true) && localvalue < -100) {
+            localvalue = -100;
+        }
+    
+        if ((bool)(true) && localvalue > 100) {
+            localvalue = 100;
+        }
+    
+        if (this->numberobj_37_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_37_value = localvalue;
+    }
+    
+    void numberobj_38_value_setter(number v) {
+        number localvalue = v;
+    
+        if (this->numberobj_38_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_38_value = localvalue;
+    }
+    
+    void numberobj_39_value_setter(number v) {
+        number localvalue = v;
+    
+        if (this->numberobj_39_currentFormat != 6) {
+            localvalue = trunc(localvalue);
+        }
+    
+        this->numberobj_39_value = localvalue;
+    }
+    
+    void numberobj_40_value_setter(number v) {
+        number localvalue = v;
+    
         if ((bool)(true) && localvalue < 2) {
             localvalue = 2;
         }
@@ -39975,11 +40439,11 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
             localvalue = 200;
         }
     
-        if (this->numberobj_35_currentFormat != 6) {
+        if (this->numberobj_40_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_35_value = localvalue;
+        this->numberobj_40_value = localvalue;
     }
     
     number xfade_tilde_19_func_next(number pos, Int channel) {
@@ -40048,19 +40512,34 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
     
     void xfade_tilde_20_func_reset() {}
     
-    void numberobj_29_init() {
-        this->numberobj_29_currentFormat = 0;
+    void numberobj_33_init() {
+        this->numberobj_33_currentFormat = 0;
     }
     
-    void numberobj_29_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_29_value;
+    void numberobj_33_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_33_value;
     }
     
-    void numberobj_29_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_33_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_29_value_set(preset["value"]);
+        this->numberobj_33_value_set(preset["value"]);
+    }
+    
+    void numberobj_34_init() {
+        this->numberobj_34_currentFormat = 6;
+    }
+    
+    void numberobj_34_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_34_value;
+    }
+    
+    void numberobj_34_setPresetValue(PatcherStateInterface& preset) {
+        if ((bool)(stateIsEmpty(preset)))
+            return;
+    
+        this->numberobj_34_value_set(preset["value"]);
     }
     
     number ftom_02_innerFtoM_next(number frequency, number tuning) {
@@ -40442,34 +40921,34 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->ftom_02_innerScala_update(this->ftom_02_scale, this->ftom_02_map);
     }
     
-    void numberobj_30_init() {
-        this->numberobj_30_currentFormat = 6;
+    void numberobj_35_init() {
+        this->numberobj_35_currentFormat = 6;
     }
     
-    void numberobj_30_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_30_value;
+    void numberobj_35_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_35_value;
     }
     
-    void numberobj_30_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_35_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_30_value_set(preset["value"]);
+        this->numberobj_35_value_set(preset["value"]);
     }
     
-    void numberobj_31_init() {
-        this->numberobj_31_currentFormat = 6;
+    void numberobj_36_init() {
+        this->numberobj_36_currentFormat = 6;
     }
     
-    void numberobj_31_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_31_value;
+    void numberobj_36_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_36_value;
     }
     
-    void numberobj_31_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_36_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_31_value_set(preset["value"]);
+        this->numberobj_36_value_set(preset["value"]);
     }
     
     void phasor_01_onBeatTimeChanged(number beattime) {
@@ -40509,19 +40988,19 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->phasor_01_ph_dspsetup();
     }
     
-    void numberobj_32_init() {
-        this->numberobj_32_currentFormat = 6;
+    void numberobj_37_init() {
+        this->numberobj_37_currentFormat = 6;
     }
     
-    void numberobj_32_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_32_value;
+    void numberobj_37_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_37_value;
     }
     
-    void numberobj_32_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_37_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_32_value_set(preset["value"]);
+        this->numberobj_37_value_set(preset["value"]);
     }
     
     void rate_tilde_01_reset() {
@@ -40542,49 +41021,49 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         this->rate_tilde_01_setupDone = true;
     }
     
-    void numberobj_33_init() {
-        this->numberobj_33_currentFormat = 6;
+    void numberobj_38_init() {
+        this->numberobj_38_currentFormat = 6;
     }
     
-    void numberobj_33_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_33_value;
+    void numberobj_38_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_38_value;
     }
     
-    void numberobj_33_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_38_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_33_value_set(preset["value"]);
+        this->numberobj_38_value_set(preset["value"]);
     }
     
-    void numberobj_34_init() {
-        this->numberobj_34_currentFormat = 6;
+    void numberobj_39_init() {
+        this->numberobj_39_currentFormat = 6;
     }
     
-    void numberobj_34_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_34_value;
+    void numberobj_39_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_39_value;
     }
     
-    void numberobj_34_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_39_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_34_value_set(preset["value"]);
+        this->numberobj_39_value_set(preset["value"]);
     }
     
-    void numberobj_35_init() {
-        this->numberobj_35_currentFormat = 6;
+    void numberobj_40_init() {
+        this->numberobj_40_currentFormat = 6;
     }
     
-    void numberobj_35_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_35_value;
+    void numberobj_40_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_40_value;
     }
     
-    void numberobj_35_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_40_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_35_value_set(preset["value"]);
+        this->numberobj_40_value_set(preset["value"]);
     }
     
     bool stackprotect_check() {
@@ -40630,43 +41109,45 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         p_19_target = 0;
         xfade_tilde_19_pos = 0;
         xfade_tilde_20_pos = 0;
-        numberobj_29_value = 0;
-        numberobj_29_value_setter(numberobj_29_value);
+        numberobj_33_value = 0;
+        numberobj_33_value_setter(numberobj_33_value);
         p_20_target = 0;
+        numberobj_34_value = 0;
+        numberobj_34_value_setter(numberobj_34_value);
         ftom_02_base = 440;
         expr_35_in1 = 0;
         expr_35_in2 = 0;
         expr_35_out1 = 0;
         p_21_target = 0;
-        numberobj_30_value = 0;
-        numberobj_30_value_setter(numberobj_30_value);
-        numberobj_31_value = 0;
-        numberobj_31_value_setter(numberobj_31_value);
+        numberobj_35_value = 0;
+        numberobj_35_value_setter(numberobj_35_value);
+        numberobj_36_value = 0;
+        numberobj_36_value_setter(numberobj_36_value);
         linetilde_02_time = 50;
         linetilde_02_keepramp = true;
         p_22_target = 0;
         p_23_target = 0;
         phasor_01_freq = 0;
-        numberobj_32_value = 0;
-        numberobj_32_value_setter(numberobj_32_value);
+        numberobj_37_value = 0;
+        numberobj_37_value_setter(numberobj_37_value);
         p_24_target = 0;
         floatnum_01_input_number = 0;
         floatnum_01_value = 0;
         rate_tilde_01_phase = 0;
         rate_tilde_01_multiplier = 1;
-        numberobj_33_value = 0;
-        numberobj_33_value_setter(numberobj_33_value);
+        numberobj_38_value = 0;
+        numberobj_38_value_setter(numberobj_38_value);
         linetilde_03_time = 50;
         linetilde_03_keepramp = true;
         floatnum_02_input_number = 0;
         floatnum_02_value = 0;
-        numberobj_34_value = 0;
-        numberobj_34_value_setter(numberobj_34_value);
+        numberobj_39_value = 0;
+        numberobj_39_value_setter(numberobj_39_value);
         mstosamps_02_ms = 0;
         linetilde_04_time = 50;
         linetilde_04_keepramp = true;
-        numberobj_35_value = 0;
-        numberobj_35_value_setter(numberobj_35_value);
+        numberobj_40_value = 0;
+        numberobj_40_value_setter(numberobj_40_value);
         _currentTime = 0;
         audioProcessSampleCount = 0;
         sampleOffsetIntoNextAudioBuffer = 0;
@@ -40684,8 +41165,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         maxvs = 0;
         sr = 44100;
         invsr = 0.000022675736961451248;
-        numberobj_29_currentFormat = 6;
-        numberobj_29_lastValue = 0;
+        numberobj_33_currentFormat = 6;
+        numberobj_33_lastValue = 0;
+        numberobj_34_currentFormat = 6;
+        numberobj_34_lastValue = 0;
         ftom_02_innerFtoM_lastInValue = 0;
         ftom_02_innerFtoM_lastOutValue = 0;
         ftom_02_innerFtoM_lastTuning = 0;
@@ -40704,10 +41187,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         ftom_02_innerScala_kbmOctaveDegree = 12;
         ftom_02_innerScala_kbmMapSize = 0;
         ftom_02_innerScala_refFreq = 261.63;
-        numberobj_30_currentFormat = 6;
-        numberobj_30_lastValue = 0;
-        numberobj_31_currentFormat = 6;
-        numberobj_31_lastValue = 0;
+        numberobj_35_currentFormat = 6;
+        numberobj_35_lastValue = 0;
+        numberobj_36_currentFormat = 6;
+        numberobj_36_lastValue = 0;
         linetilde_02_currentValue = 0;
         phasor_01_sigbuf = nullptr;
         phasor_01_lastLockedPhase = 0;
@@ -40720,8 +41203,8 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         phasor_01_ph_currentPhase = 0;
         phasor_01_ph_conv = 0;
         phasor_01_setupDone = false;
-        numberobj_32_currentFormat = 6;
-        numberobj_32_lastValue = 0;
+        numberobj_37_currentFormat = 6;
+        numberobj_37_lastValue = 0;
         floatnum_01_stored = 100;
         rate_tilde_01_currentPhase = 0;
         rate_tilde_01_diff = 0;
@@ -40731,15 +41214,15 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         rate_tilde_01_wantlock = 1;
         rate_tilde_01_quant = 1;
         rate_tilde_01_setupDone = false;
-        numberobj_33_currentFormat = 6;
-        numberobj_33_lastValue = 0;
+        numberobj_38_currentFormat = 6;
+        numberobj_38_lastValue = 0;
         linetilde_03_currentValue = 0;
         floatnum_02_stored = 80;
-        numberobj_34_currentFormat = 6;
-        numberobj_34_lastValue = 0;
+        numberobj_39_currentFormat = 6;
+        numberobj_39_lastValue = 0;
         linetilde_04_currentValue = 100;
-        numberobj_35_currentFormat = 6;
-        numberobj_35_lastValue = 0;
+        numberobj_40_currentFormat = 6;
+        numberobj_40_lastValue = 0;
         stackprotect_count = 0;
         _voiceIndex = 0;
         _noteNumber = 0;
@@ -40752,8 +41235,9 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         number p_19_target;
         number xfade_tilde_19_pos;
         number xfade_tilde_20_pos;
-        number numberobj_29_value;
+        number numberobj_33_value;
         number p_20_target;
+        number numberobj_34_value;
         list ftom_02_frequency;
         list ftom_02_scale;
         list ftom_02_map;
@@ -40762,32 +41246,32 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         number expr_35_in2;
         number expr_35_out1;
         number p_21_target;
-        number numberobj_30_value;
-        number numberobj_31_value;
+        number numberobj_35_value;
+        number numberobj_36_value;
         list linetilde_02_segments;
         number linetilde_02_time;
         number linetilde_02_keepramp;
         number p_22_target;
         number p_23_target;
         number phasor_01_freq;
-        number numberobj_32_value;
+        number numberobj_37_value;
         number p_24_target;
         number floatnum_01_input_number;
         number floatnum_01_value;
         number rate_tilde_01_phase;
         number rate_tilde_01_multiplier;
-        number numberobj_33_value;
+        number numberobj_38_value;
         list linetilde_03_segments;
         number linetilde_03_time;
         number linetilde_03_keepramp;
         number floatnum_02_input_number;
         number floatnum_02_value;
-        number numberobj_34_value;
+        number numberobj_39_value;
         number mstosamps_02_ms;
         list linetilde_04_segments;
         number linetilde_04_time;
         number linetilde_04_keepramp;
-        number numberobj_35_value;
+        number numberobj_40_value;
         MillisecondTime _currentTime;
         UInt64 audioProcessSampleCount;
         Index sampleOffsetIntoNextAudioBuffer;
@@ -40799,8 +41283,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         Index maxvs;
         number sr;
         number invsr;
-        Int numberobj_29_currentFormat;
-        number numberobj_29_lastValue;
+        Int numberobj_33_currentFormat;
+        number numberobj_33_lastValue;
+        Int numberobj_34_currentFormat;
+        number numberobj_34_lastValue;
         number ftom_02_innerFtoM_lastInValue;
         number ftom_02_innerFtoM_lastOutValue;
         number ftom_02_innerFtoM_lastTuning;
@@ -40821,10 +41307,10 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         Int ftom_02_innerScala_kbmOctaveDegree;
         Index ftom_02_innerScala_kbmMapSize;
         number ftom_02_innerScala_refFreq;
-        Int numberobj_30_currentFormat;
-        number numberobj_30_lastValue;
-        Int numberobj_31_currentFormat;
-        number numberobj_31_lastValue;
+        Int numberobj_35_currentFormat;
+        number numberobj_35_lastValue;
+        Int numberobj_36_currentFormat;
+        number numberobj_36_lastValue;
         list linetilde_02_activeRamps;
         number linetilde_02_currentValue;
         signal phasor_01_sigbuf;
@@ -40838,8 +41324,8 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         number phasor_01_ph_currentPhase;
         number phasor_01_ph_conv;
         bool phasor_01_setupDone;
-        Int numberobj_32_currentFormat;
-        number numberobj_32_lastValue;
+        Int numberobj_37_currentFormat;
+        number numberobj_37_lastValue;
         number floatnum_01_stored;
         SampleValue rate_tilde_01_currentPhase;
         SampleValue rate_tilde_01_diff;
@@ -40849,41 +41335,41 @@ class RNBOSubpatcher_1611 : public PatcherInterfaceImpl {
         Int rate_tilde_01_wantlock;
         Int rate_tilde_01_quant;
         bool rate_tilde_01_setupDone;
-        Int numberobj_33_currentFormat;
-        number numberobj_33_lastValue;
+        Int numberobj_38_currentFormat;
+        number numberobj_38_lastValue;
         list linetilde_03_activeRamps;
         number linetilde_03_currentValue;
         number floatnum_02_stored;
-        Int numberobj_34_currentFormat;
-        number numberobj_34_lastValue;
+        Int numberobj_39_currentFormat;
+        number numberobj_39_lastValue;
         list linetilde_04_activeRamps;
         number linetilde_04_currentValue;
-        Int numberobj_35_currentFormat;
-        number numberobj_35_lastValue;
+        Int numberobj_40_currentFormat;
+        number numberobj_40_lastValue;
         number stackprotect_count;
         Index _voiceIndex;
         Int _noteNumber;
         Index isMuted;
         ParameterIndex parameterOffset;
-        RNBOSubpatcher_1577 p_19;
-        RNBOSubpatcher_1578 p_20;
-        RNBOSubpatcher_1579 p_21;
-        RNBOSubpatcher_1580 p_22;
-        RNBOSubpatcher_1581 p_23;
-        RNBOSubpatcher_1582 p_24;
+        RNBOSubpatcher_5119 p_19;
+        RNBOSubpatcher_5120 p_20;
+        RNBOSubpatcher_5121 p_21;
+        RNBOSubpatcher_5122 p_22;
+        RNBOSubpatcher_5123 p_23;
+        RNBOSubpatcher_5124 p_24;
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1612 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5154 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1612()
+    RNBOSubpatcher_5154()
     {}
     
-    ~RNBOSubpatcher_1612()
+    ~RNBOSubpatcher_5154()
     {
         deallocateSignals();
     }
@@ -41479,10 +41965,10 @@ class RNBOSubpatcher_1612 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1612* operator->() {
+    RNBOSubpatcher_5154* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1612* operator->() const {
+    const RNBOSubpatcher_5154* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -42614,16 +43100,16 @@ class RNBOSubpatcher_1612 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5155 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1613()
+    RNBOSubpatcher_5155()
     {}
     
-    ~RNBOSubpatcher_1613()
+    ~RNBOSubpatcher_5155()
     {
         deallocateSignals();
     }
@@ -42663,17 +43149,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->linetilde_07_perform(this->signals[4], n);
         this->rate_tilde_02_perform(this->signals[3], this->signals[4], this->signals[5], n);
         this->linetilde_08_perform(this->signals[4], n);
-        this->p_30_perform(this->signals[1], this->signals[5], this->signals[4], this->signals[6], n);
-        this->p_28_perform(this->signals[0], this->signals[3], this->signals[4], this->signals[5], n);
+        this->p_28_perform(this->signals[0], this->signals[3], this->signals[4], this->signals[6], n);
+        this->p_30_perform(this->signals[1], this->signals[5], this->signals[4], this->signals[3], n);
     
         this->p_26_perform(
             this->signals[0],
             this->signals[1],
-            this->signals[5],
             this->signals[6],
+            this->signals[3],
             this->signals[2],
             this->signals[4],
-            this->signals[3],
+            this->signals[5],
             n
         );
     
@@ -42681,7 +43167,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             this->signals[0],
             this->signals[1],
             this->signals[4],
-            this->signals[3],
+            this->signals[5],
             out1,
             out2,
             n
@@ -43181,50 +43667,50 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         case TAG("valin"):
             {
             if (TAG("pitchShifter2/number_obj-103") == objectId)
-                this->numberobj_57_valin_set(payload);
+                this->numberobj_66_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-63") == objectId)
-                this->numberobj_58_valin_set(payload);
+                this->numberobj_67_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-83") == objectId)
-                this->numberobj_59_valin_set(payload);
+                this->numberobj_68_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-24") == objectId)
-                this->numberobj_60_valin_set(payload);
+                this->numberobj_69_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-31") == objectId)
-                this->numberobj_61_valin_set(payload);
+                this->numberobj_70_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-80") == objectId)
-                this->numberobj_62_valin_set(payload);
+                this->numberobj_71_valin_set(payload);
     
             if (TAG("pitchShifter2/number_obj-70") == objectId)
-                this->numberobj_63_valin_set(payload);
+                this->numberobj_72_valin_set(payload);
     
             break;
             }
         case TAG("format"):
             {
             if (TAG("pitchShifter2/number_obj-103") == objectId)
-                this->numberobj_57_format_set(payload);
+                this->numberobj_66_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-63") == objectId)
-                this->numberobj_58_format_set(payload);
+                this->numberobj_67_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-83") == objectId)
-                this->numberobj_59_format_set(payload);
+                this->numberobj_68_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-24") == objectId)
-                this->numberobj_60_format_set(payload);
+                this->numberobj_69_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-31") == objectId)
-                this->numberobj_61_format_set(payload);
+                this->numberobj_70_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-80") == objectId)
-                this->numberobj_62_format_set(payload);
+                this->numberobj_71_format_set(payload);
     
             if (TAG("pitchShifter2/number_obj-70") == objectId)
-                this->numberobj_63_format_set(payload);
+                this->numberobj_72_format_set(payload);
     
             break;
             }
@@ -43395,17 +43881,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
     
     protected:
     
-    class RNBOSubpatcher_1583 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5125 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1583()
+            RNBOSubpatcher_5125()
             {}
             
-            ~RNBOSubpatcher_1583()
+            ~RNBOSubpatcher_5125()
             {
                 deallocateSignals();
             }
@@ -43436,8 +43922,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 const SampleValue * in3 = (numInputs >= 3 && inputs[2] ? inputs[2] : this->zeroBuffer);
                 const SampleValue * in4 = (numInputs >= 4 && inputs[3] ? inputs[3] : this->zeroBuffer);
                 this->linetilde_05_perform(this->signals[0], n);
-                this->xfade_tilde_34_perform(this->signals[0], in2, in4, out2, n);
                 this->xfade_tilde_33_perform(this->signals[0], in1, in3, out1, n);
+                this->xfade_tilde_34_perform(this->signals[0], in2, in4, out2, n);
                 this->stackprotect_perform(n);
                 this->audioProcessSampleCount += this->vs;
             }
@@ -43599,20 +44085,20 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 case TAG("valin"):
                     {
                     if (TAG("pitchShifter2/Mix~/number_obj-5") == objectId)
-                        this->numberobj_36_valin_set(payload);
+                        this->numberobj_41_valin_set(payload);
             
                     if (TAG("pitchShifter2/Mix~/number_obj-8") == objectId)
-                        this->numberobj_37_valin_set(payload);
+                        this->numberobj_42_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
                     if (TAG("pitchShifter2/Mix~/number_obj-5") == objectId)
-                        this->numberobj_36_format_set(payload);
+                        this->numberobj_41_format_set(payload);
             
                     if (TAG("pitchShifter2/Mix~/number_obj-8") == objectId)
-                        this->numberobj_37_format_set(payload);
+                        this->numberobj_42_format_set(payload);
             
                     break;
                     }
@@ -43684,14 +44170,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1583* operator->() {
+            RNBOSubpatcher_5125* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1583* operator->() const {
+            const RNBOSubpatcher_5125* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -43758,30 +44244,30 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 return this->_currentTime;
             }
             
-            void numberobj_36_valin_set(number v) {
-                this->numberobj_36_value_set(v);
+            void numberobj_41_valin_set(number v) {
+                this->numberobj_41_value_set(v);
             }
             
-            void numberobj_36_format_set(number v) {
-                this->numberobj_36_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_41_format_set(number v) {
+                this->numberobj_41_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
-            void numberobj_37_valin_set(number v) {
-                this->numberobj_37_value_set(v);
+            void numberobj_42_valin_set(number v) {
+                this->numberobj_42_value_set(v);
             }
             
-            void numberobj_37_format_set(number v) {
-                this->numberobj_37_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_42_format_set(number v) {
+                this->numberobj_42_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void eventinlet_47_out1_bang_bang() {
-                this->numberobj_37_value_bang();
+                this->numberobj_42_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_47_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_37_value_set(converted);
+                    this->numberobj_42_value_set(converted);
                 }
             }
             
@@ -43813,8 +44299,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
-                this->numberobj_36_init();
-                this->numberobj_37_init();
+                this->numberobj_41_init();
+                this->numberobj_42_init();
             }
             
             Index getIsMuted()  {
@@ -43941,28 +44427,28 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
-            void numberobj_36_output_set(number v) {
+            void numberobj_41_output_set(number v) {
                 {
                     listbase<number, 1> converted = {v};
                     this->linetilde_05_segments_set(converted);
                 }
             }
             
-            void numberobj_36_value_set(number v) {
-                this->numberobj_36_value_setter(v);
-                v = this->numberobj_36_value;
+            void numberobj_41_value_set(number v) {
+                this->numberobj_41_value_setter(v);
+                v = this->numberobj_41_value;
                 number localvalue = v;
             
-                if (this->numberobj_36_currentFormat != 6) {
+                if (this->numberobj_41_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_36_output_set(localvalue);
+                this->numberobj_41_output_set(localvalue);
             }
             
             void expr_36_out1_set(number v) {
                 this->expr_36_out1 = v;
-                this->numberobj_36_value_set(this->expr_36_out1);
+                this->numberobj_41_value_set(this->expr_36_out1);
             }
             
             void expr_36_in1_set(number in1) {
@@ -43973,35 +44459,35 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 );//#map:pitchShifter2/Mix~//_obj-7:1
             }
             
-            void numberobj_37_output_set(number v) {
+            void numberobj_42_output_set(number v) {
                 this->expr_36_in1_set(v);
             }
             
-            void numberobj_37_value_set(number v) {
-                this->numberobj_37_value_setter(v);
-                v = this->numberobj_37_value;
+            void numberobj_42_value_set(number v) {
+                this->numberobj_42_value_setter(v);
+                v = this->numberobj_42_value;
                 number localvalue = v;
             
-                if (this->numberobj_37_currentFormat != 6) {
+                if (this->numberobj_42_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_37_output_set(localvalue);
+                this->numberobj_42_output_set(localvalue);
             }
             
             void eventinlet_47_out1_number_set(number v) {
-                this->numberobj_37_value_set(v);
+                this->numberobj_42_value_set(v);
             }
             
-            void numberobj_37_value_bang() {
-                number v = this->numberobj_37_value;
+            void numberobj_42_value_bang() {
+                number v = this->numberobj_42_value;
                 number localvalue = v;
             
-                if (this->numberobj_37_currentFormat != 6) {
+                if (this->numberobj_42_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_37_output_set(localvalue);
+                this->numberobj_42_output_set(localvalue);
             }
             
             void linetilde_05_perform(SampleValue * out, Index n) {
@@ -44055,20 +44541,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->linetilde_05_time = __linetilde_05_time;
             }
             
-            void xfade_tilde_34_perform(
-                const Sample * pos,
-                const SampleValue * in1,
-                const SampleValue * in2,
-                SampleValue * out,
-                Index n
-            ) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out[(Index)i] = in1[(Index)i] * this->xfade_tilde_34_func_next(pos[(Index)i], 0) + in2[(Index)i] * this->xfade_tilde_34_func_next(pos[(Index)i], 1);
-                }
-            }
-            
             void xfade_tilde_33_perform(
                 const Sample * pos,
                 const SampleValue * in1,
@@ -44083,6 +44555,20 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
+            void xfade_tilde_34_perform(
+                const Sample * pos,
+                const SampleValue * in1,
+                const SampleValue * in2,
+                SampleValue * out,
+                Index n
+            ) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out[(Index)i] = in1[(Index)i] * this->xfade_tilde_34_func_next(pos[(Index)i], 0) + in2[(Index)i] * this->xfade_tilde_34_func_next(pos[(Index)i], 1);
+                }
+            }
+            
             void stackprotect_perform(Index n) {
                 RNBO_UNUSED(n);
                 auto __stackprotect_count = this->stackprotect_count;
@@ -44090,24 +44576,24 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->stackprotect_count = __stackprotect_count;
             }
             
-            void numberobj_36_value_setter(number v) {
+            void numberobj_41_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_36_currentFormat != 6) {
+                if (this->numberobj_41_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_36_value = localvalue;
+                this->numberobj_41_value = localvalue;
             }
             
-            void numberobj_37_value_setter(number v) {
+            void numberobj_42_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_37_currentFormat != 6) {
+                if (this->numberobj_42_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_37_value = localvalue;
+                this->numberobj_42_value = localvalue;
             }
             
             number xfade_tilde_33_func_next(number pos, Int channel) {
@@ -44172,34 +44658,34 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void xfade_tilde_34_func_reset() {}
             
-            void numberobj_36_init() {
-                this->numberobj_36_currentFormat = 6;
+            void numberobj_41_init() {
+                this->numberobj_41_currentFormat = 6;
             }
             
-            void numberobj_36_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_36_value;
+            void numberobj_41_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_41_value;
             }
             
-            void numberobj_36_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_41_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_36_value_set(preset["value"]);
+                this->numberobj_41_value_set(preset["value"]);
             }
             
-            void numberobj_37_init() {
-                this->numberobj_37_currentFormat = 6;
+            void numberobj_42_init() {
+                this->numberobj_42_currentFormat = 6;
             }
             
-            void numberobj_37_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_37_value;
+            void numberobj_42_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_42_value;
             }
             
-            void numberobj_37_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_42_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_37_value_set(preset["value"]);
+                this->numberobj_42_value_set(preset["value"]);
             }
             
             bool stackprotect_check() {
@@ -44244,13 +44730,13 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             {
                 xfade_tilde_33_pos = 0;
                 xfade_tilde_34_pos = 0;
-                numberobj_36_value = 0;
-                numberobj_36_value_setter(numberobj_36_value);
+                numberobj_41_value = 0;
+                numberobj_41_value_setter(numberobj_41_value);
                 expr_36_in1 = 0;
                 expr_36_in2 = 100;
                 expr_36_out1 = 0;
-                numberobj_37_value = 0;
-                numberobj_37_value_setter(numberobj_37_value);
+                numberobj_42_value = 0;
+                numberobj_42_value_setter(numberobj_42_value);
                 linetilde_05_time = 10;
                 linetilde_05_keepramp = true;
                 _currentTime = 0;
@@ -44264,10 +44750,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
-                numberobj_36_currentFormat = 6;
-                numberobj_36_lastValue = 0;
-                numberobj_37_currentFormat = 6;
-                numberobj_37_lastValue = 0;
+                numberobj_41_currentFormat = 6;
+                numberobj_41_lastValue = 0;
+                numberobj_42_currentFormat = 6;
+                numberobj_42_lastValue = 0;
                 linetilde_05_currentValue = 0;
                 stackprotect_count = 0;
                 _voiceIndex = 0;
@@ -44280,11 +44766,11 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
                 number xfade_tilde_33_pos;
                 number xfade_tilde_34_pos;
-                number numberobj_36_value;
+                number numberobj_41_value;
                 number expr_36_in1;
                 number expr_36_in2;
                 number expr_36_out1;
-                number numberobj_37_value;
+                number numberobj_42_value;
                 list linetilde_05_segments;
                 number linetilde_05_time;
                 number linetilde_05_keepramp;
@@ -44299,10 +44785,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
-                Int numberobj_36_currentFormat;
-                number numberobj_36_lastValue;
-                Int numberobj_37_currentFormat;
-                number numberobj_37_lastValue;
+                Int numberobj_41_currentFormat;
+                number numberobj_41_lastValue;
+                Int numberobj_42_currentFormat;
+                number numberobj_42_lastValue;
                 list linetilde_05_activeRamps;
                 number linetilde_05_currentValue;
                 number stackprotect_count;
@@ -44313,17 +44799,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1584 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5126 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1584()
+            RNBOSubpatcher_5126()
             {}
             
-            ~RNBOSubpatcher_1584()
+            ~RNBOSubpatcher_5126()
             {
                 deallocateSignals();
             }
@@ -44354,9 +44840,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 const SampleValue * in3 = (numInputs >= 3 && inputs[2] ? inputs[2] : this->zeroBuffer);
                 const SampleValue * in4 = (numInputs >= 4 && inputs[3] ? inputs[3] : this->zeroBuffer);
                 const SampleValue * in5 = (numInputs >= 5 && inputs[4] ? inputs[4] : this->zeroBuffer);
-                this->numbertilde_08_perform(in5, this->dummyBuffer, n);
                 this->dspexpr_22_perform(in5, this->dspexpr_22_in2, this->signals[0], n);
-                this->numbertilde_07_perform(this->signals[0], this->dummyBuffer, n);
             
                 this->rampsmooth_tilde_02_perform(
                     this->signals[0],
@@ -44366,8 +44850,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     n
                 );
             
-                this->dspexpr_21_perform(in2, in4, this->signals[1], out2, n);
                 this->dspexpr_20_perform(in1, in3, this->signals[1], out1, n);
+                this->dspexpr_21_perform(in2, in4, this->signals[1], out2, n);
+                this->numbertilde_07_perform(this->signals[0], this->dummyBuffer, n);
+                this->numbertilde_08_perform(in5, this->dummyBuffer, n);
                 this->stackprotect_perform(n);
                 this->audioProcessSampleCount += this->vs;
             }
@@ -44398,9 +44884,9 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->invsr = 1 / sampleRate;
                 }
             
-                this->numbertilde_08_dspsetup(forceDSPSetup);
-                this->numbertilde_07_dspsetup(forceDSPSetup);
                 this->rampsmooth_tilde_02_dspsetup(forceDSPSetup);
+                this->numbertilde_07_dspsetup(forceDSPSetup);
+                this->numbertilde_08_dspsetup(forceDSPSetup);
             
                 if (sampleRateChanged)
                     this->onSampleRateChanged(sampleRate);
@@ -44564,14 +45050,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 case TAG("valin"):
                     {
                     if (TAG("pitchShifter2/Switch~/number_obj-112") == objectId)
-                        this->numberobj_38_valin_set(payload);
+                        this->numberobj_43_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
                     if (TAG("pitchShifter2/Switch~/number_obj-112") == objectId)
-                        this->numberobj_38_format_set(payload);
+                        this->numberobj_43_format_set(payload);
             
                     break;
                     }
@@ -44736,14 +45222,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1584* operator->() {
+            RNBOSubpatcher_5126* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1584* operator->() const {
+            const RNBOSubpatcher_5126* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -44753,8 +45239,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             void cancelClockEvents()
             {
                 getEngine()->flushClockEvents(this, -871642103, false);
-                getEngine()->flushClockEvents(this, 2098551528, false);
                 getEngine()->flushClockEvents(this, -1494586265, false);
+                getEngine()->flushClockEvents(this, 2098551528, false);
             }
             
             number mstosamps(MillisecondTime ms) {
@@ -44801,12 +45287,12 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->loadbang_04_output_bang();
             }
             
-            void numberobj_38_valin_set(number v) {
-                this->numberobj_38_value_set(v);
+            void numberobj_43_valin_set(number v) {
+                this->numberobj_43_value_set(v);
             }
             
-            void numberobj_38_format_set(number v) {
-                this->numberobj_38_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_43_format_set(number v) {
+                this->numberobj_43_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             template<typename LISTTYPE> void message_03_listin_list_set(const LISTTYPE& v) {
@@ -44821,9 +45307,9 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->message_03_trigger_bang();
             }
             
-            void numbertilde_08_value_set(number ) {}
-            
             void numbertilde_07_value_set(number ) {}
+            
+            void numbertilde_08_value_set(number ) {}
             
             void deallocateSignals() {
                 Index i;
@@ -44853,7 +45339,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             void initializeObjects() {
                 this->numbertilde_07_init();
                 this->numbertilde_08_init();
-                this->numberobj_38_init();
+                this->numberobj_43_init();
                 this->message_03_init();
             }
             
@@ -44887,14 +45373,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->loadbang_04_startupbang_bang();
                     break;
                     }
-                case 2098551528:
-                    {
-                    this->numbertilde_08_value_set(value);
-                    break;
-                    }
                 case -1494586265:
                     {
                     this->numbertilde_07_value_set(value);
+                    break;
+                    }
+                case 2098551528:
+                    {
+                    this->numbertilde_08_value_set(value);
                     break;
                     }
                 }
@@ -44933,25 +45419,25 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->rampsmooth_tilde_02_up = v;
             }
             
-            void numberobj_38_output_set(number v) {
+            void numberobj_43_output_set(number v) {
                 this->rampsmooth_tilde_02_down_set(v);
                 this->rampsmooth_tilde_02_up_set(v);
             }
             
-            void numberobj_38_value_set(number v) {
-                this->numberobj_38_value_setter(v);
-                v = this->numberobj_38_value;
+            void numberobj_43_value_set(number v) {
+                this->numberobj_43_value_setter(v);
+                v = this->numberobj_43_value;
                 number localvalue = v;
             
-                if (this->numberobj_38_currentFormat != 6) {
+                if (this->numberobj_43_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_38_output_set(localvalue);
+                this->numberobj_43_output_set(localvalue);
             }
             
             void translate_02_out_set(number v) {
-                this->numberobj_38_value_set(v);
+                this->numberobj_43_value_set(v);
             }
             
             void translate_02_value_set(number v) {
@@ -44991,47 +45477,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->message_03_set = jsCreateListCopy(v);
             }
             
-            void numbertilde_08_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_08_currentIntervalInSamples = this->numbertilde_08_currentIntervalInSamples;
-                auto __numbertilde_08_lastValue = this->numbertilde_08_lastValue;
-                auto __numbertilde_08_currentInterval = this->numbertilde_08_currentInterval;
-                auto __numbertilde_08_rampInSamples = this->numbertilde_08_rampInSamples;
-                auto __numbertilde_08_outValue = this->numbertilde_08_outValue;
-                auto __numbertilde_08_currentMode = this->numbertilde_08_currentMode;
-                number monitorvalue = input_signal[0];
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_08_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_08_smooth_next(
-                            __numbertilde_08_outValue,
-                            __numbertilde_08_rampInSamples,
-                            __numbertilde_08_rampInSamples
-                        );
-                    } else {
-                        output[(Index)i] = input_signal[(Index)i];
-                    }
-                }
-            
-                __numbertilde_08_currentInterval -= n;
-            
-                if (monitorvalue != __numbertilde_08_lastValue && __numbertilde_08_currentInterval <= 0) {
-                    __numbertilde_08_currentInterval = __numbertilde_08_currentIntervalInSamples;
-            
-                    this->getEngine()->scheduleClockEventWithValue(
-                        this,
-                        2098551528,
-                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
-                        monitorvalue
-                    );;
-            
-                    __numbertilde_08_lastValue = monitorvalue;
-                    ;
-                }
-            
-                this->numbertilde_08_currentInterval = __numbertilde_08_currentInterval;
-                this->numbertilde_08_lastValue = __numbertilde_08_lastValue;
-            }
-            
             void dspexpr_22_perform(const Sample * in1, number in2, SampleValue * out1, Index n) {
                 RNBO_UNUSED(in2);
                 Index i;
@@ -45039,47 +45484,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 for (i = 0; i < (Index)n; i++) {
                     out1[(Index)i] = in1[(Index)i] != 0;//#map:_###_obj_###_:1
                 }
-            }
-            
-            void numbertilde_07_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_07_currentIntervalInSamples = this->numbertilde_07_currentIntervalInSamples;
-                auto __numbertilde_07_lastValue = this->numbertilde_07_lastValue;
-                auto __numbertilde_07_currentInterval = this->numbertilde_07_currentInterval;
-                auto __numbertilde_07_rampInSamples = this->numbertilde_07_rampInSamples;
-                auto __numbertilde_07_outValue = this->numbertilde_07_outValue;
-                auto __numbertilde_07_currentMode = this->numbertilde_07_currentMode;
-                number monitorvalue = input_signal[0];
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_07_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_07_smooth_next(
-                            __numbertilde_07_outValue,
-                            __numbertilde_07_rampInSamples,
-                            __numbertilde_07_rampInSamples
-                        );
-                    } else {
-                        output[(Index)i] = input_signal[(Index)i];
-                    }
-                }
-            
-                __numbertilde_07_currentInterval -= n;
-            
-                if (monitorvalue != __numbertilde_07_lastValue && __numbertilde_07_currentInterval <= 0) {
-                    __numbertilde_07_currentInterval = __numbertilde_07_currentIntervalInSamples;
-            
-                    this->getEngine()->scheduleClockEventWithValue(
-                        this,
-                        -1494586265,
-                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
-                        monitorvalue
-                    );;
-            
-                    __numbertilde_07_lastValue = monitorvalue;
-                    ;
-                }
-            
-                this->numbertilde_07_currentInterval = __numbertilde_07_currentInterval;
-                this->numbertilde_07_lastValue = __numbertilde_07_lastValue;
             }
             
             void rampsmooth_tilde_02_perform(const Sample * x, number up, number down, SampleValue * out1, Index n) {
@@ -45124,20 +45528,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->rampsmooth_tilde_02_increment = __rampsmooth_tilde_02_increment;
             }
             
-            void dspexpr_21_perform(
-                const Sample * in1,
-                const Sample * in2,
-                const Sample * in3,
-                SampleValue * out1,
-                Index n
-            ) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] + in3[(Index)i] * (in2[(Index)i] - in1[(Index)i]);//#map:_###_obj_###_:1
-                }
-            }
-            
             void dspexpr_20_perform(
                 const Sample * in1,
                 const Sample * in2,
@@ -45152,6 +45542,102 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
+            void dspexpr_21_perform(
+                const Sample * in1,
+                const Sample * in2,
+                const Sample * in3,
+                SampleValue * out1,
+                Index n
+            ) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out1[(Index)i] = in1[(Index)i] + in3[(Index)i] * (in2[(Index)i] - in1[(Index)i]);//#map:_###_obj_###_:1
+                }
+            }
+            
+            void numbertilde_07_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_07_currentIntervalInSamples = this->numbertilde_07_currentIntervalInSamples;
+                auto __numbertilde_07_lastValue = this->numbertilde_07_lastValue;
+                auto __numbertilde_07_currentInterval = this->numbertilde_07_currentInterval;
+                auto __numbertilde_07_rampInSamples = this->numbertilde_07_rampInSamples;
+                auto __numbertilde_07_outValue = this->numbertilde_07_outValue;
+                auto __numbertilde_07_currentMode = this->numbertilde_07_currentMode;
+                number monitorvalue = input_signal[0];
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__numbertilde_07_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_07_smooth_next(
+                            __numbertilde_07_outValue,
+                            __numbertilde_07_rampInSamples,
+                            __numbertilde_07_rampInSamples
+                        );
+                    } else {
+                        output[(Index)i] = input_signal[(Index)i];
+                    }
+                }
+            
+                __numbertilde_07_currentInterval -= n;
+            
+                if (monitorvalue != __numbertilde_07_lastValue && __numbertilde_07_currentInterval <= 0) {
+                    __numbertilde_07_currentInterval = __numbertilde_07_currentIntervalInSamples;
+            
+                    this->getEngine()->scheduleClockEventWithValue(
+                        this,
+                        -1494586265,
+                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
+                        monitorvalue
+                    );;
+            
+                    __numbertilde_07_lastValue = monitorvalue;
+                    ;
+                }
+            
+                this->numbertilde_07_currentInterval = __numbertilde_07_currentInterval;
+                this->numbertilde_07_lastValue = __numbertilde_07_lastValue;
+            }
+            
+            void numbertilde_08_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_08_currentIntervalInSamples = this->numbertilde_08_currentIntervalInSamples;
+                auto __numbertilde_08_lastValue = this->numbertilde_08_lastValue;
+                auto __numbertilde_08_currentInterval = this->numbertilde_08_currentInterval;
+                auto __numbertilde_08_rampInSamples = this->numbertilde_08_rampInSamples;
+                auto __numbertilde_08_outValue = this->numbertilde_08_outValue;
+                auto __numbertilde_08_currentMode = this->numbertilde_08_currentMode;
+                number monitorvalue = input_signal[0];
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__numbertilde_08_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_08_smooth_next(
+                            __numbertilde_08_outValue,
+                            __numbertilde_08_rampInSamples,
+                            __numbertilde_08_rampInSamples
+                        );
+                    } else {
+                        output[(Index)i] = input_signal[(Index)i];
+                    }
+                }
+            
+                __numbertilde_08_currentInterval -= n;
+            
+                if (monitorvalue != __numbertilde_08_lastValue && __numbertilde_08_currentInterval <= 0) {
+                    __numbertilde_08_currentInterval = __numbertilde_08_currentIntervalInSamples;
+            
+                    this->getEngine()->scheduleClockEventWithValue(
+                        this,
+                        2098551528,
+                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
+                        monitorvalue
+                    );;
+            
+                    __numbertilde_08_lastValue = monitorvalue;
+                    ;
+                }
+            
+                this->numbertilde_08_currentInterval = __numbertilde_08_currentInterval;
+                this->numbertilde_08_lastValue = __numbertilde_08_lastValue;
+            }
+            
             void stackprotect_perform(Index n) {
                 RNBO_UNUSED(n);
                 auto __stackprotect_count = this->stackprotect_count;
@@ -45159,14 +45645,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->stackprotect_count = __stackprotect_count;
             }
             
-            void numberobj_38_value_setter(number v) {
+            void numberobj_43_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_38_currentFormat != 6) {
+                if (this->numberobj_43_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_38_value = localvalue;
+                this->numberobj_43_value = localvalue;
             }
             
             number rampsmooth_tilde_02_d_next(number x) {
@@ -45325,19 +45811,19 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numbertilde_08_smooth_d_dspsetup();
             }
             
-            void numberobj_38_init() {
-                this->numberobj_38_currentFormat = 6;
+            void numberobj_43_init() {
+                this->numberobj_43_currentFormat = 6;
             }
             
-            void numberobj_38_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_38_value;
+            void numberobj_43_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_43_value;
             }
             
-            void numberobj_38_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_43_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_38_value_set(preset["value"]);
+                this->numberobj_43_value_set(preset["value"]);
             }
             
             void message_03_init() {
@@ -45409,8 +45895,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 numbertilde_07_ramp = 0;
                 numbertilde_08_input_number = 0;
                 numbertilde_08_ramp = 0;
-                numberobj_38_value = 0;
-                numberobj_38_value_setter(numberobj_38_value);
+                numberobj_43_value = 0;
+                numberobj_43_value_setter(numberobj_43_value);
                 translate_02_value = 0;
                 _currentTime = 0;
                 audioProcessSampleCount = 0;
@@ -45451,8 +45937,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 numbertilde_08_smooth_index = 0;
                 numbertilde_08_smooth_increment = 0;
                 numbertilde_08_setupDone = false;
-                numberobj_38_currentFormat = 6;
-                numberobj_38_lastValue = 0;
+                numberobj_43_currentFormat = 6;
+                numberobj_43_lastValue = 0;
                 stackprotect_count = 0;
                 _voiceIndex = 0;
                 _noteNumber = 0;
@@ -45477,7 +45963,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 number numbertilde_07_ramp;
                 number numbertilde_08_input_number;
                 number numbertilde_08_ramp;
-                number numberobj_38_value;
+                number numberobj_43_value;
                 list message_03_set;
                 number translate_02_value;
                 MillisecondTime _currentTime;
@@ -45518,8 +46004,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 number numbertilde_08_smooth_index;
                 number numbertilde_08_smooth_increment;
                 bool numbertilde_08_setupDone;
-                Int numberobj_38_currentFormat;
-                number numberobj_38_lastValue;
+                Int numberobj_43_currentFormat;
+                number numberobj_43_lastValue;
                 number stackprotect_count;
                 Index _voiceIndex;
                 Int _noteNumber;
@@ -45528,17 +46014,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1585 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5127 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1585()
+            RNBOSubpatcher_5127()
             {}
             
-            ~RNBOSubpatcher_1585()
+            ~RNBOSubpatcher_5127()
             {
                 deallocateSignals();
             }
@@ -45721,92 +46207,92 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 case TAG("valin"):
                     {
                     if (TAG("pitchShifter2/FreqCalc/number_obj-118") == objectId)
-                        this->numberobj_39_valin_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-107") == objectId)
-                        this->numberobj_40_valin_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-90") == objectId)
-                        this->numberobj_41_valin_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-81") == objectId)
-                        this->numberobj_42_valin_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-78") == objectId)
-                        this->numberobj_43_valin_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-71") == objectId)
                         this->numberobj_44_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-92") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-107") == objectId)
                         this->numberobj_45_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-119") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-90") == objectId)
                         this->numberobj_46_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-87") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-81") == objectId)
                         this->numberobj_47_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-77") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-78") == objectId)
                         this->numberobj_48_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-84") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-71") == objectId)
                         this->numberobj_49_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-70") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-92") == objectId)
                         this->numberobj_50_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-98") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-119") == objectId)
                         this->numberobj_51_valin_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-100") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-87") == objectId)
                         this->numberobj_52_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-77") == objectId)
+                        this->numberobj_53_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-84") == objectId)
+                        this->numberobj_54_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-70") == objectId)
+                        this->numberobj_55_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-98") == objectId)
+                        this->numberobj_56_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-100") == objectId)
+                        this->numberobj_57_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
                     if (TAG("pitchShifter2/FreqCalc/number_obj-118") == objectId)
-                        this->numberobj_39_format_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-107") == objectId)
-                        this->numberobj_40_format_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-90") == objectId)
-                        this->numberobj_41_format_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-81") == objectId)
-                        this->numberobj_42_format_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-78") == objectId)
-                        this->numberobj_43_format_set(payload);
-            
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-71") == objectId)
                         this->numberobj_44_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-92") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-107") == objectId)
                         this->numberobj_45_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-119") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-90") == objectId)
                         this->numberobj_46_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-87") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-81") == objectId)
                         this->numberobj_47_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-77") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-78") == objectId)
                         this->numberobj_48_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-84") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-71") == objectId)
                         this->numberobj_49_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-70") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-92") == objectId)
                         this->numberobj_50_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-98") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-119") == objectId)
                         this->numberobj_51_format_set(payload);
             
-                    if (TAG("pitchShifter2/FreqCalc/number_obj-100") == objectId)
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-87") == objectId)
                         this->numberobj_52_format_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-77") == objectId)
+                        this->numberobj_53_format_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-84") == objectId)
+                        this->numberobj_54_format_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-70") == objectId)
+                        this->numberobj_55_format_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-98") == objectId)
+                        this->numberobj_56_format_set(payload);
+            
+                    if (TAG("pitchShifter2/FreqCalc/number_obj-100") == objectId)
+                        this->numberobj_57_format_set(payload);
             
                     break;
                     }
@@ -45974,14 +46460,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1585* operator->() {
+            RNBOSubpatcher_5127* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1585* operator->() const {
+            const RNBOSubpatcher_5127* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -45996,75 +46482,12 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 return this->_currentTime;
             }
             
-            void numberobj_39_valin_set(number v) {
-                this->numberobj_39_value_set(v);
-            }
-            
-            void numberobj_39_format_set(number v) {
-                this->numberobj_39_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            void numberobj_40_valin_set(number v) {
-                this->numberobj_40_value_set(v);
-            }
-            
-            void numberobj_40_format_set(number v) {
-                this->numberobj_40_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            void numberobj_41_valin_set(number v) {
-                this->numberobj_41_value_set(v);
-            }
-            
-            void numberobj_41_format_set(number v) {
-                this->numberobj_41_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            void numberobj_42_valin_set(number v) {
-                this->numberobj_42_value_set(v);
-            }
-            
-            void numberobj_42_format_set(number v) {
-                this->numberobj_42_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            void numberobj_43_valin_set(number v) {
-                this->numberobj_43_value_set(v);
-            }
-            
-            void numberobj_43_format_set(number v) {
-                this->numberobj_43_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            void eventinlet_48_out1_bang_bang() {
-                this->numberobj_44_value_bang();
-            }
-            
-            template<typename LISTTYPE> void eventinlet_48_out1_list_set(const LISTTYPE& v) {
-                {
-                    number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_44_value_set(converted);
-                }
-            }
-            
             void numberobj_44_valin_set(number v) {
                 this->numberobj_44_value_set(v);
             }
             
             void numberobj_44_format_set(number v) {
                 this->numberobj_44_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
-            }
-            
-            template<typename LISTTYPE> void message_04_listin_list_set(const LISTTYPE& v) {
-                this->message_04_set_set(v);
-            }
-            
-            void message_04_listin_number_set(number v) {
-                this->message_04_set_set(v);
-            }
-            
-            void message_04_listin_bang_bang() {
-                this->message_04_trigger_bang();
             }
             
             void numberobj_45_valin_set(number v) {
@@ -46099,6 +46522,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_48_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
+            void eventinlet_48_out1_bang_bang() {
+                this->numberobj_49_value_bang();
+            }
+            
+            template<typename LISTTYPE> void eventinlet_48_out1_list_set(const LISTTYPE& v) {
+                {
+                    number converted = (v->length > 0 ? v[0] : 0);
+                    this->numberobj_49_value_set(converted);
+                }
+            }
+            
             void numberobj_49_valin_set(number v) {
                 this->numberobj_49_value_set(v);
             }
@@ -46107,15 +46541,16 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_49_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
-            void eventinlet_49_out1_bang_bang() {
-                this->numberobj_50_value_bang();
+            template<typename LISTTYPE> void message_04_listin_list_set(const LISTTYPE& v) {
+                this->message_04_set_set(v);
             }
             
-            template<typename LISTTYPE> void eventinlet_49_out1_list_set(const LISTTYPE& v) {
-                {
-                    number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_50_value_set(converted);
-                }
+            void message_04_listin_number_set(number v) {
+                this->message_04_set_set(v);
+            }
+            
+            void message_04_listin_bang_bang() {
+                this->message_04_trigger_bang();
             }
             
             void numberobj_50_valin_set(number v) {
@@ -46142,14 +46577,65 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_52_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
+            void numberobj_53_valin_set(number v) {
+                this->numberobj_53_value_set(v);
+            }
+            
+            void numberobj_53_format_set(number v) {
+                this->numberobj_53_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_54_valin_set(number v) {
+                this->numberobj_54_value_set(v);
+            }
+            
+            void numberobj_54_format_set(number v) {
+                this->numberobj_54_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void eventinlet_49_out1_bang_bang() {
+                this->numberobj_55_value_bang();
+            }
+            
+            template<typename LISTTYPE> void eventinlet_49_out1_list_set(const LISTTYPE& v) {
+                {
+                    number converted = (v->length > 0 ? v[0] : 0);
+                    this->numberobj_55_value_set(converted);
+                }
+            }
+            
+            void numberobj_55_valin_set(number v) {
+                this->numberobj_55_value_set(v);
+            }
+            
+            void numberobj_55_format_set(number v) {
+                this->numberobj_55_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_56_valin_set(number v) {
+                this->numberobj_56_value_set(v);
+            }
+            
+            void numberobj_56_format_set(number v) {
+                this->numberobj_56_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_57_valin_set(number v) {
+                this->numberobj_57_value_set(v);
+            }
+            
+            void numberobj_57_format_set(number v) {
+                this->numberobj_57_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
             void eventinlet_50_out1_bang_bang() {
-                this->numberobj_52_value_bang();
+                this->numberobj_57_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_50_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_52_value_set(converted);
+                    this->numberobj_57_value_set(converted);
                 }
             }
             
@@ -46174,21 +46660,21 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
-                this->numberobj_39_init();
-                this->numberobj_40_init();
-                this->numberobj_41_init();
-                this->numberobj_42_init();
-                this->numberobj_43_init();
                 this->numberobj_44_init();
-                this->message_04_init();
                 this->numberobj_45_init();
                 this->numberobj_46_init();
                 this->numberobj_47_init();
                 this->numberobj_48_init();
                 this->numberobj_49_init();
+                this->message_04_init();
                 this->numberobj_50_init();
                 this->numberobj_51_init();
                 this->numberobj_52_init();
+                this->numberobj_53_init();
+                this->numberobj_54_init();
+                this->numberobj_55_init();
+                this->numberobj_56_init();
+                this->numberobj_57_init();
             }
             
             Index getIsMuted()  {
@@ -46238,26 +46724,26 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->getPatcher()->p_27_out2_number_set(v);
             }
             
-            void numberobj_45_output_set(number v) {
+            void numberobj_50_output_set(number v) {
                 this->eventoutlet_07_in1_number_set(v);
             }
             
-            void numberobj_45_value_set(number v) {
-                this->numberobj_45_value_setter(v);
-                v = this->numberobj_45_value;
+            void numberobj_50_value_set(number v) {
+                this->numberobj_50_value_setter(v);
+                v = this->numberobj_50_value;
                 number localvalue = v;
             
-                if (this->numberobj_45_currentFormat != 6) {
+                if (this->numberobj_50_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_45_output_set(localvalue);
+                this->numberobj_50_output_set(localvalue);
             }
             
             template<typename LISTTYPE> void message_04_out_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_45_value_set(converted);
+                    this->numberobj_50_value_set(converted);
                 }
             }
             
@@ -46272,7 +46758,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             }
             
             void select_02_nomatch_number_set(number v) {
-                this->numberobj_45_value_set(v);
+                this->numberobj_50_value_set(v);
             }
             
             void select_02_input_number_set(number v) {
@@ -46300,311 +46786,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->expr_42_in1_set(this->expr_42_in1);
             }
             
-            void numberobj_46_output_set(number v) {
-                this->expr_42_in2_set(v);
-            }
-            
-            void numberobj_46_value_set(number v) {
-                this->numberobj_46_value_setter(v);
-                v = this->numberobj_46_value;
-                number localvalue = v;
-            
-                if (this->numberobj_46_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_46_output_set(localvalue);
-            }
-            
-            void expr_43_out1_set(number v) {
-                this->expr_43_out1 = v;
-                this->numberobj_46_value_set(this->expr_43_out1);
-            }
-            
-            void expr_43_in1_set(number in1) {
-                this->expr_43_in1 = in1;
-                this->expr_43_out1_set(this->expr_43_in2 - this->expr_43_in1);//#map:pitchShifter2/FreqCalc/!-_obj-117:1
-            }
-            
-            void numberobj_47_output_set(number v) {
-                this->expr_43_in1_set(v);
-            }
-            
-            void numberobj_47_value_set(number v) {
-                this->numberobj_47_value_setter(v);
-                v = this->numberobj_47_value;
-                number localvalue = v;
-            
-                if (this->numberobj_47_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_47_output_set(localvalue);
-            }
-            
-            void expr_44_out1_set(number v) {
-                this->expr_44_out1 = v;
-                this->numberobj_47_value_set(this->expr_44_out1);
-            }
-            
-            void expr_44_in1_set(number in1) {
-                this->expr_44_in1 = in1;
-                this->expr_44_out1_set(fixnan(rnbo_pow(2, this->expr_44_in1 / (number)1200)));//#map:pitchShifter2/FreqCalc/expr_obj-86:1
-            }
-            
-            void numberobj_48_output_set(number v) {
-                this->expr_44_in1_set(v);
-            }
-            
-            void numberobj_48_value_set(number v) {
-                this->numberobj_48_value_setter(v);
-                v = this->numberobj_48_value;
-                number localvalue = v;
-            
-                if (this->numberobj_48_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_48_output_set(localvalue);
-            }
-            
-            void expr_45_out1_set(number v) {
-                this->expr_45_out1 = v;
-                this->numberobj_48_value_set(this->expr_45_out1);
-            }
-            
-            void expr_45_in1_set(number in1) {
-                this->expr_45_in1 = in1;
-                this->expr_45_out1_set(this->expr_45_in1 + this->expr_45_in2);//#map:pitchShifter2/FreqCalc/+_obj-79:1
-            }
-            
-            void eventoutlet_06_in1_number_set(number v) {
-                this->getPatcher()->updateTime(this->_currentTime, (ENGINE*)nullptr);
-                this->getPatcher()->p_27_out1_number_set(v);
-            }
-            
-            void numberobj_40_output_set(number v) {
-                this->eventoutlet_06_in1_number_set(v);
-            }
-            
-            void numberobj_40_value_set(number v) {
-                this->numberobj_40_value_setter(v);
-                v = this->numberobj_40_value;
-                number localvalue = v;
-            
-                if (this->numberobj_40_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_40_output_set(localvalue);
-            }
-            
-            void expr_38_out1_set(number v) {
-                this->expr_38_out1 = v;
-                this->numberobj_40_value_set(this->expr_38_out1);
-            }
-            
-            void expr_38_in1_set(number in1) {
-                this->expr_38_in1 = in1;
-            
-                this->expr_38_out1_set(
-                    (this->expr_38_in2 == 0 ? 0 : (this->expr_38_in2 == 0. ? 0. : this->expr_38_in1 / this->expr_38_in2))
-                );//#map:pitchShifter2/FreqCalc//_obj-108:1
-            }
-            
-            void numberobj_39_output_set(number v) {
-                this->expr_42_in1_set(v);
-                this->expr_38_in1_set(v);
-            }
-            
-            void numberobj_39_value_set(number v) {
-                this->numberobj_39_value_setter(v);
-                v = this->numberobj_39_value;
-                number localvalue = v;
-            
-                if (this->numberobj_39_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_39_output_set(localvalue);
-            }
-            
-            void expr_37_out1_set(number v) {
-                this->expr_37_out1 = v;
-                this->numberobj_39_value_set(this->expr_37_out1);
-            }
-            
-            void expr_37_in1_set(number in1) {
-                this->expr_37_in1 = in1;
-                this->expr_37_out1_set(this->expr_37_in2 - this->expr_37_in1);//#map:pitchShifter2/FreqCalc/!-_obj-115:1
-            }
-            
-            void numberobj_41_output_set(number v) {
-                this->expr_37_in1_set(v);
-            }
-            
-            void numberobj_41_value_set(number v) {
-                this->numberobj_41_value_setter(v);
-                v = this->numberobj_41_value;
-                number localvalue = v;
-            
-                if (this->numberobj_41_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_41_output_set(localvalue);
-            }
-            
-            void expr_39_out1_set(number v) {
-                this->expr_39_out1 = v;
-                this->numberobj_41_value_set(this->expr_39_out1);
-            }
-            
-            void expr_39_in1_set(number in1) {
-                this->expr_39_in1 = in1;
-                this->expr_39_out1_set(fixnan(rnbo_pow(2, this->expr_39_in1 / (number)1200)));//#map:pitchShifter2/FreqCalc/expr_obj-89:1
-            }
-            
-            void numberobj_43_output_set(number v) {
-                this->expr_39_in1_set(v);
-            }
-            
-            void numberobj_43_value_set(number v) {
-                this->numberobj_43_value_setter(v);
-                v = this->numberobj_43_value;
-                number localvalue = v;
-            
-                if (this->numberobj_43_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_43_output_set(localvalue);
-            }
-            
-            void expr_40_out1_set(number v) {
-                this->expr_40_out1 = v;
-                this->numberobj_43_value_set(this->expr_40_out1);
-            }
-            
-            void expr_40_in1_set(number in1) {
-                this->expr_40_in1 = in1;
-                this->expr_40_out1_set(this->expr_40_in1 - this->expr_40_in2);//#map:pitchShifter2/FreqCalc/-_obj-80:1
-            }
-            
-            void numberobj_42_output_set(number v) {
-                this->expr_45_in1_set(v);
-                this->expr_40_in1_set(v);
-            }
-            
-            void numberobj_42_value_set(number v) {
-                this->numberobj_42_value_setter(v);
-                v = this->numberobj_42_value;
-                number localvalue = v;
-            
-                if (this->numberobj_42_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_42_output_set(localvalue);
-            }
-            
-            void expr_41_out1_set(number v) {
-                this->expr_41_out1 = v;
-                this->numberobj_42_value_set(this->expr_41_out1);
-            }
-            
-            void expr_41_in1_set(number in1) {
-                this->expr_41_in1 = in1;
-                this->expr_41_out1_set(this->expr_41_in1 * this->expr_41_in2);//#map:pitchShifter2/FreqCalc/*_obj-76:1
-            }
-            
-            void numberobj_44_output_set(number v) {
-                this->expr_41_in1_set(v);
-            }
-            
-            void numberobj_44_value_set(number v) {
-                this->numberobj_44_value_setter(v);
-                v = this->numberobj_44_value;
-                number localvalue = v;
-            
-                if (this->numberobj_44_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_44_output_set(localvalue);
-            }
-            
-            void eventinlet_48_out1_number_set(number v) {
-                this->numberobj_44_value_set(v);
-            }
-            
-            void expr_45_in2_set(number v) {
-                this->expr_45_in2 = v;
-                this->expr_45_in1_set(this->expr_45_in1);
-            }
-            
-            void expr_40_in2_set(number v) {
-                this->expr_40_in2 = v;
-                this->expr_40_in1_set(this->expr_40_in1);
-            }
-            
-            void numberobj_49_output_set(number v) {
-                this->expr_45_in2_set(v);
-                this->expr_40_in2_set(v);
-            }
-            
-            void numberobj_49_value_set(number v) {
-                this->numberobj_49_value_setter(v);
-                v = this->numberobj_49_value;
-                number localvalue = v;
-            
-                if (this->numberobj_49_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_49_output_set(localvalue);
-            }
-            
-            void expr_46_out1_set(number v) {
-                this->expr_46_out1 = v;
-                this->numberobj_49_value_set(this->expr_46_out1);
-            }
-            
-            void expr_46_in1_set(number in1) {
-                this->expr_46_in1 = in1;
-            
-                this->expr_46_out1_set(
-                    (this->expr_46_in2 == 0 ? 0 : (this->expr_46_in2 == 0. ? 0. : this->expr_46_in1 / this->expr_46_in2))
-                );//#map:pitchShifter2/FreqCalc//_obj-83:1
-            }
-            
-            void numberobj_50_output_set(number v) {
-                this->expr_46_in1_set(v);
-            }
-            
-            void numberobj_50_value_set(number v) {
-                this->numberobj_50_value_setter(v);
-                v = this->numberobj_50_value;
-                number localvalue = v;
-            
-                if (this->numberobj_50_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_50_output_set(localvalue);
-            }
-            
-            void eventinlet_49_out1_number_set(number v) {
-                this->numberobj_50_value_set(v);
-            }
-            
-            void expr_38_in2_set(number v) {
-                this->expr_38_in2 = v;
-                this->expr_38_in1_set(this->expr_38_in1);
-            }
-            
             void numberobj_51_output_set(number v) {
-                this->expr_38_in2_set(v);
+                this->expr_42_in2_set(v);
             }
             
             void numberobj_51_value_set(number v) {
@@ -46619,21 +46802,18 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_51_output_set(localvalue);
             }
             
-            void expr_47_out1_set(number v) {
-                this->expr_47_out1 = v;
-                this->numberobj_51_value_set(this->expr_47_out1);
+            void expr_43_out1_set(number v) {
+                this->expr_43_out1 = v;
+                this->numberobj_51_value_set(this->expr_43_out1);
             }
             
-            void expr_47_in1_set(number in1) {
-                this->expr_47_in1 = in1;
-            
-                this->expr_47_out1_set(
-                    (this->expr_47_in2 == 0 ? 0 : (this->expr_47_in2 == 0. ? 0. : this->expr_47_in1 / this->expr_47_in2))
-                );//#map:pitchShifter2/FreqCalc//_obj-99:1
+            void expr_43_in1_set(number in1) {
+                this->expr_43_in1 = in1;
+                this->expr_43_out1_set(this->expr_43_in2 - this->expr_43_in1);//#map:pitchShifter2/FreqCalc/!-_obj-117:1
             }
             
             void numberobj_52_output_set(number v) {
-                this->expr_47_in1_set(v);
+                this->expr_43_in1_set(v);
             }
             
             void numberobj_52_value_set(number v) {
@@ -46648,12 +46828,84 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_52_output_set(localvalue);
             }
             
-            void eventinlet_50_out1_number_set(number v) {
-                this->numberobj_52_value_set(v);
+            void expr_44_out1_set(number v) {
+                this->expr_44_out1 = v;
+                this->numberobj_52_value_set(this->expr_44_out1);
             }
             
-            void numberobj_44_value_bang() {
-                number v = this->numberobj_44_value;
+            void expr_44_in1_set(number in1) {
+                this->expr_44_in1 = in1;
+                this->expr_44_out1_set(fixnan(rnbo_pow(2, this->expr_44_in1 / (number)1200)));//#map:pitchShifter2/FreqCalc/expr_obj-86:1
+            }
+            
+            void numberobj_53_output_set(number v) {
+                this->expr_44_in1_set(v);
+            }
+            
+            void numberobj_53_value_set(number v) {
+                this->numberobj_53_value_setter(v);
+                v = this->numberobj_53_value;
+                number localvalue = v;
+            
+                if (this->numberobj_53_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_53_output_set(localvalue);
+            }
+            
+            void expr_45_out1_set(number v) {
+                this->expr_45_out1 = v;
+                this->numberobj_53_value_set(this->expr_45_out1);
+            }
+            
+            void expr_45_in1_set(number in1) {
+                this->expr_45_in1 = in1;
+                this->expr_45_out1_set(this->expr_45_in1 + this->expr_45_in2);//#map:pitchShifter2/FreqCalc/+_obj-79:1
+            }
+            
+            void eventoutlet_06_in1_number_set(number v) {
+                this->getPatcher()->updateTime(this->_currentTime, (ENGINE*)nullptr);
+                this->getPatcher()->p_27_out1_number_set(v);
+            }
+            
+            void numberobj_45_output_set(number v) {
+                this->eventoutlet_06_in1_number_set(v);
+            }
+            
+            void numberobj_45_value_set(number v) {
+                this->numberobj_45_value_setter(v);
+                v = this->numberobj_45_value;
+                number localvalue = v;
+            
+                if (this->numberobj_45_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_45_output_set(localvalue);
+            }
+            
+            void expr_38_out1_set(number v) {
+                this->expr_38_out1 = v;
+                this->numberobj_45_value_set(this->expr_38_out1);
+            }
+            
+            void expr_38_in1_set(number in1) {
+                this->expr_38_in1 = in1;
+            
+                this->expr_38_out1_set(
+                    (this->expr_38_in2 == 0 ? 0 : (this->expr_38_in2 == 0. ? 0. : this->expr_38_in1 / this->expr_38_in2))
+                );//#map:pitchShifter2/FreqCalc//_obj-108:1
+            }
+            
+            void numberobj_44_output_set(number v) {
+                this->expr_42_in1_set(v);
+                this->expr_38_in1_set(v);
+            }
+            
+            void numberobj_44_value_set(number v) {
+                this->numberobj_44_value_setter(v);
+                v = this->numberobj_44_value;
                 number localvalue = v;
             
                 if (this->numberobj_44_currentFormat != 6) {
@@ -46663,30 +46915,264 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_44_output_set(localvalue);
             }
             
+            void expr_37_out1_set(number v) {
+                this->expr_37_out1 = v;
+                this->numberobj_44_value_set(this->expr_37_out1);
+            }
+            
+            void expr_37_in1_set(number in1) {
+                this->expr_37_in1 = in1;
+                this->expr_37_out1_set(this->expr_37_in2 - this->expr_37_in1);//#map:pitchShifter2/FreqCalc/!-_obj-115:1
+            }
+            
+            void numberobj_46_output_set(number v) {
+                this->expr_37_in1_set(v);
+            }
+            
+            void numberobj_46_value_set(number v) {
+                this->numberobj_46_value_setter(v);
+                v = this->numberobj_46_value;
+                number localvalue = v;
+            
+                if (this->numberobj_46_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_46_output_set(localvalue);
+            }
+            
+            void expr_39_out1_set(number v) {
+                this->expr_39_out1 = v;
+                this->numberobj_46_value_set(this->expr_39_out1);
+            }
+            
+            void expr_39_in1_set(number in1) {
+                this->expr_39_in1 = in1;
+                this->expr_39_out1_set(fixnan(rnbo_pow(2, this->expr_39_in1 / (number)1200)));//#map:pitchShifter2/FreqCalc/expr_obj-89:1
+            }
+            
+            void numberobj_48_output_set(number v) {
+                this->expr_39_in1_set(v);
+            }
+            
+            void numberobj_48_value_set(number v) {
+                this->numberobj_48_value_setter(v);
+                v = this->numberobj_48_value;
+                number localvalue = v;
+            
+                if (this->numberobj_48_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_48_output_set(localvalue);
+            }
+            
+            void expr_40_out1_set(number v) {
+                this->expr_40_out1 = v;
+                this->numberobj_48_value_set(this->expr_40_out1);
+            }
+            
+            void expr_40_in1_set(number in1) {
+                this->expr_40_in1 = in1;
+                this->expr_40_out1_set(this->expr_40_in1 - this->expr_40_in2);//#map:pitchShifter2/FreqCalc/-_obj-80:1
+            }
+            
+            void numberobj_47_output_set(number v) {
+                this->expr_45_in1_set(v);
+                this->expr_40_in1_set(v);
+            }
+            
+            void numberobj_47_value_set(number v) {
+                this->numberobj_47_value_setter(v);
+                v = this->numberobj_47_value;
+                number localvalue = v;
+            
+                if (this->numberobj_47_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_47_output_set(localvalue);
+            }
+            
+            void expr_41_out1_set(number v) {
+                this->expr_41_out1 = v;
+                this->numberobj_47_value_set(this->expr_41_out1);
+            }
+            
+            void expr_41_in1_set(number in1) {
+                this->expr_41_in1 = in1;
+                this->expr_41_out1_set(this->expr_41_in1 * this->expr_41_in2);//#map:pitchShifter2/FreqCalc/*_obj-76:1
+            }
+            
+            void numberobj_49_output_set(number v) {
+                this->expr_41_in1_set(v);
+            }
+            
+            void numberobj_49_value_set(number v) {
+                this->numberobj_49_value_setter(v);
+                v = this->numberobj_49_value;
+                number localvalue = v;
+            
+                if (this->numberobj_49_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_49_output_set(localvalue);
+            }
+            
+            void eventinlet_48_out1_number_set(number v) {
+                this->numberobj_49_value_set(v);
+            }
+            
+            void expr_45_in2_set(number v) {
+                this->expr_45_in2 = v;
+                this->expr_45_in1_set(this->expr_45_in1);
+            }
+            
+            void expr_40_in2_set(number v) {
+                this->expr_40_in2 = v;
+                this->expr_40_in1_set(this->expr_40_in1);
+            }
+            
+            void numberobj_54_output_set(number v) {
+                this->expr_45_in2_set(v);
+                this->expr_40_in2_set(v);
+            }
+            
+            void numberobj_54_value_set(number v) {
+                this->numberobj_54_value_setter(v);
+                v = this->numberobj_54_value;
+                number localvalue = v;
+            
+                if (this->numberobj_54_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_54_output_set(localvalue);
+            }
+            
+            void expr_46_out1_set(number v) {
+                this->expr_46_out1 = v;
+                this->numberobj_54_value_set(this->expr_46_out1);
+            }
+            
+            void expr_46_in1_set(number in1) {
+                this->expr_46_in1 = in1;
+            
+                this->expr_46_out1_set(
+                    (this->expr_46_in2 == 0 ? 0 : (this->expr_46_in2 == 0. ? 0. : this->expr_46_in1 / this->expr_46_in2))
+                );//#map:pitchShifter2/FreqCalc//_obj-83:1
+            }
+            
+            void numberobj_55_output_set(number v) {
+                this->expr_46_in1_set(v);
+            }
+            
+            void numberobj_55_value_set(number v) {
+                this->numberobj_55_value_setter(v);
+                v = this->numberobj_55_value;
+                number localvalue = v;
+            
+                if (this->numberobj_55_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_55_output_set(localvalue);
+            }
+            
+            void eventinlet_49_out1_number_set(number v) {
+                this->numberobj_55_value_set(v);
+            }
+            
+            void expr_38_in2_set(number v) {
+                this->expr_38_in2 = v;
+                this->expr_38_in1_set(this->expr_38_in1);
+            }
+            
+            void numberobj_56_output_set(number v) {
+                this->expr_38_in2_set(v);
+            }
+            
+            void numberobj_56_value_set(number v) {
+                this->numberobj_56_value_setter(v);
+                v = this->numberobj_56_value;
+                number localvalue = v;
+            
+                if (this->numberobj_56_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_56_output_set(localvalue);
+            }
+            
+            void expr_47_out1_set(number v) {
+                this->expr_47_out1 = v;
+                this->numberobj_56_value_set(this->expr_47_out1);
+            }
+            
+            void expr_47_in1_set(number in1) {
+                this->expr_47_in1 = in1;
+            
+                this->expr_47_out1_set(
+                    (this->expr_47_in2 == 0 ? 0 : (this->expr_47_in2 == 0. ? 0. : this->expr_47_in1 / this->expr_47_in2))
+                );//#map:pitchShifter2/FreqCalc//_obj-99:1
+            }
+            
+            void numberobj_57_output_set(number v) {
+                this->expr_47_in1_set(v);
+            }
+            
+            void numberobj_57_value_set(number v) {
+                this->numberobj_57_value_setter(v);
+                v = this->numberobj_57_value;
+                number localvalue = v;
+            
+                if (this->numberobj_57_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_57_output_set(localvalue);
+            }
+            
+            void eventinlet_50_out1_number_set(number v) {
+                this->numberobj_57_value_set(v);
+            }
+            
+            void numberobj_49_value_bang() {
+                number v = this->numberobj_49_value;
+                number localvalue = v;
+            
+                if (this->numberobj_49_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_49_output_set(localvalue);
+            }
+            
             template<typename LISTTYPE> void message_04_set_set(const LISTTYPE& v) {
                 this->message_04_set = jsCreateListCopy(v);
             }
             
-            void numberobj_50_value_bang() {
-                number v = this->numberobj_50_value;
+            void numberobj_55_value_bang() {
+                number v = this->numberobj_55_value;
                 number localvalue = v;
             
-                if (this->numberobj_50_currentFormat != 6) {
+                if (this->numberobj_55_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_50_output_set(localvalue);
+                this->numberobj_55_output_set(localvalue);
             }
             
-            void numberobj_52_value_bang() {
-                number v = this->numberobj_52_value;
+            void numberobj_57_value_bang() {
+                number v = this->numberobj_57_value;
                 number localvalue = v;
             
-                if (this->numberobj_52_currentFormat != 6) {
+                if (this->numberobj_57_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_52_output_set(localvalue);
+                this->numberobj_57_output_set(localvalue);
             }
             
             void stackprotect_perform(Index n) {
@@ -46694,56 +47180,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 auto __stackprotect_count = this->stackprotect_count;
                 __stackprotect_count = 0;
                 this->stackprotect_count = __stackprotect_count;
-            }
-            
-            void numberobj_39_value_setter(number v) {
-                number localvalue = v;
-            
-                if (this->numberobj_39_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_39_value = localvalue;
-            }
-            
-            void numberobj_40_value_setter(number v) {
-                number localvalue = v;
-            
-                if (this->numberobj_40_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_40_value = localvalue;
-            }
-            
-            void numberobj_41_value_setter(number v) {
-                number localvalue = v;
-            
-                if (this->numberobj_41_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_41_value = localvalue;
-            }
-            
-            void numberobj_42_value_setter(number v) {
-                number localvalue = v;
-            
-                if (this->numberobj_42_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_42_value = localvalue;
-            }
-            
-            void numberobj_43_value_setter(number v) {
-                number localvalue = v;
-            
-                if (this->numberobj_43_currentFormat != 6) {
-                    localvalue = trunc(localvalue);
-                }
-            
-                this->numberobj_43_value = localvalue;
             }
             
             void numberobj_44_value_setter(number v) {
@@ -46836,79 +47272,54 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_52_value = localvalue;
             }
             
-            void numberobj_39_init() {
-                this->numberobj_39_currentFormat = 6;
+            void numberobj_53_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_53_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_53_value = localvalue;
             }
             
-            void numberobj_39_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_39_value;
+            void numberobj_54_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_54_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_54_value = localvalue;
             }
             
-            void numberobj_39_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
+            void numberobj_55_value_setter(number v) {
+                number localvalue = v;
             
-                this->numberobj_39_value_set(preset["value"]);
+                if (this->numberobj_55_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_55_value = localvalue;
             }
             
-            void numberobj_40_init() {
-                this->numberobj_40_currentFormat = 6;
+            void numberobj_56_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_56_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_56_value = localvalue;
             }
             
-            void numberobj_40_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_40_value;
-            }
+            void numberobj_57_value_setter(number v) {
+                number localvalue = v;
             
-            void numberobj_40_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
+                if (this->numberobj_57_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
             
-                this->numberobj_40_value_set(preset["value"]);
-            }
-            
-            void numberobj_41_init() {
-                this->numberobj_41_currentFormat = 6;
-            }
-            
-            void numberobj_41_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_41_value;
-            }
-            
-            void numberobj_41_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_41_value_set(preset["value"]);
-            }
-            
-            void numberobj_42_init() {
-                this->numberobj_42_currentFormat = 6;
-            }
-            
-            void numberobj_42_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_42_value;
-            }
-            
-            void numberobj_42_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_42_value_set(preset["value"]);
-            }
-            
-            void numberobj_43_init() {
-                this->numberobj_43_currentFormat = 6;
-            }
-            
-            void numberobj_43_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_43_value;
-            }
-            
-            void numberobj_43_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_43_value_set(preset["value"]);
+                this->numberobj_57_value = localvalue;
             }
             
             void numberobj_44_init() {
@@ -46924,10 +47335,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     return;
             
                 this->numberobj_44_value_set(preset["value"]);
-            }
-            
-            void message_04_init() {
-                this->message_04_set_set(listbase<number, 1>{1});
             }
             
             void numberobj_45_init() {
@@ -47005,6 +47412,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_49_value_set(preset["value"]);
             }
             
+            void message_04_init() {
+                this->message_04_set_set(listbase<number, 1>{1});
+            }
+            
             void numberobj_50_init() {
                 this->numberobj_50_currentFormat = 6;
             }
@@ -47050,6 +47461,81 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->numberobj_52_value_set(preset["value"]);
             }
             
+            void numberobj_53_init() {
+                this->numberobj_53_currentFormat = 6;
+            }
+            
+            void numberobj_53_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_53_value;
+            }
+            
+            void numberobj_53_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_53_value_set(preset["value"]);
+            }
+            
+            void numberobj_54_init() {
+                this->numberobj_54_currentFormat = 6;
+            }
+            
+            void numberobj_54_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_54_value;
+            }
+            
+            void numberobj_54_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_54_value_set(preset["value"]);
+            }
+            
+            void numberobj_55_init() {
+                this->numberobj_55_currentFormat = 6;
+            }
+            
+            void numberobj_55_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_55_value;
+            }
+            
+            void numberobj_55_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_55_value_set(preset["value"]);
+            }
+            
+            void numberobj_56_init() {
+                this->numberobj_56_currentFormat = 6;
+            }
+            
+            void numberobj_56_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_56_value;
+            }
+            
+            void numberobj_56_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_56_value_set(preset["value"]);
+            }
+            
+            void numberobj_57_init() {
+                this->numberobj_57_currentFormat = 6;
+            }
+            
+            void numberobj_57_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_57_value;
+            }
+            
+            void numberobj_57_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_57_value_set(preset["value"]);
+            }
+            
             bool stackprotect_check() {
                 this->stackprotect_count++;
             
@@ -47090,66 +47576,66 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void assign_defaults()
             {
-                numberobj_39_value = 0;
-                numberobj_39_value_setter(numberobj_39_value);
+                numberobj_44_value = 0;
+                numberobj_44_value_setter(numberobj_44_value);
                 expr_37_in1 = 0;
                 expr_37_in2 = 1;
                 expr_37_out1 = 0;
-                numberobj_40_value = 0;
-                numberobj_40_value_setter(numberobj_40_value);
+                numberobj_45_value = 0;
+                numberobj_45_value_setter(numberobj_45_value);
                 expr_38_in1 = 0;
                 expr_38_in2 = 1;
                 expr_38_out1 = 0;
                 expr_39_in1 = 0;
                 expr_39_out1 = 0;
-                numberobj_41_value = 0;
-                numberobj_41_value_setter(numberobj_41_value);
-                numberobj_42_value = 0;
-                numberobj_42_value_setter(numberobj_42_value);
-                numberobj_43_value = 0;
-                numberobj_43_value_setter(numberobj_43_value);
+                numberobj_46_value = 0;
+                numberobj_46_value_setter(numberobj_46_value);
+                numberobj_47_value = 0;
+                numberobj_47_value_setter(numberobj_47_value);
+                numberobj_48_value = 0;
+                numberobj_48_value_setter(numberobj_48_value);
                 expr_40_in1 = 0;
                 expr_40_in2 = 0;
                 expr_40_out1 = 0;
                 expr_41_in1 = 0;
                 expr_41_in2 = 100;
                 expr_41_out1 = 0;
-                numberobj_44_value = 0;
-                numberobj_44_value_setter(numberobj_44_value);
+                numberobj_49_value = 0;
+                numberobj_49_value_setter(numberobj_49_value);
                 select_02_test1 = 0;
                 expr_42_in1 = 0;
                 expr_42_in2 = 1;
                 expr_42_out1 = 0;
-                numberobj_45_value = 0;
-                numberobj_45_value_setter(numberobj_45_value);
-                numberobj_46_value = 0;
-                numberobj_46_value_setter(numberobj_46_value);
+                numberobj_50_value = 0;
+                numberobj_50_value_setter(numberobj_50_value);
+                numberobj_51_value = 0;
+                numberobj_51_value_setter(numberobj_51_value);
                 expr_43_in1 = 0;
                 expr_43_in2 = 1;
                 expr_43_out1 = 0;
                 expr_44_in1 = 0;
                 expr_44_out1 = 0;
-                numberobj_47_value = 0;
-                numberobj_47_value_setter(numberobj_47_value);
-                numberobj_48_value = 0;
-                numberobj_48_value_setter(numberobj_48_value);
+                numberobj_52_value = 0;
+                numberobj_52_value_setter(numberobj_52_value);
+                numberobj_53_value = 0;
+                numberobj_53_value_setter(numberobj_53_value);
                 expr_45_in1 = 0;
                 expr_45_in2 = 0;
                 expr_45_out1 = 0;
-                numberobj_49_value = 0;
-                numberobj_49_value_setter(numberobj_49_value);
+                numberobj_54_value = 0;
+                numberobj_54_value_setter(numberobj_54_value);
                 expr_46_in1 = 0;
                 expr_46_in2 = 2;
                 expr_46_out1 = 0;
-                numberobj_50_value = 0;
-                numberobj_50_value_setter(numberobj_50_value);
-                numberobj_51_value = 0;
-                numberobj_51_value_setter(numberobj_51_value);
+                numberobj_55_value = 0;
+                numberobj_55_value_setter(numberobj_55_value);
+                numberobj_56_value = 0;
+                numberobj_56_value_setter(numberobj_56_value);
                 expr_47_in1 = 0;
                 expr_47_in2 = 1000;
                 expr_47_out1 = 0;
-                numberobj_52_value = 0;
-                numberobj_52_value_setter(numberobj_52_value);
+                numberobj_57_value = 0;
+                numberobj_57_value_setter(numberobj_57_value);
                 _currentTime = 0;
                 audioProcessSampleCount = 0;
                 sampleOffsetIntoNextAudioBuffer = 0;
@@ -47160,16 +47646,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
-                numberobj_39_currentFormat = 6;
-                numberobj_39_lastValue = 0;
-                numberobj_40_currentFormat = 6;
-                numberobj_40_lastValue = 0;
-                numberobj_41_currentFormat = 6;
-                numberobj_41_lastValue = 0;
-                numberobj_42_currentFormat = 6;
-                numberobj_42_lastValue = 0;
-                numberobj_43_currentFormat = 6;
-                numberobj_43_lastValue = 0;
                 numberobj_44_currentFormat = 6;
                 numberobj_44_lastValue = 0;
                 numberobj_45_currentFormat = 6;
@@ -47188,6 +47664,16 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 numberobj_51_lastValue = 0;
                 numberobj_52_currentFormat = 6;
                 numberobj_52_lastValue = 0;
+                numberobj_53_currentFormat = 6;
+                numberobj_53_lastValue = 0;
+                numberobj_54_currentFormat = 6;
+                numberobj_54_lastValue = 0;
+                numberobj_55_currentFormat = 6;
+                numberobj_55_lastValue = 0;
+                numberobj_56_currentFormat = 6;
+                numberobj_56_lastValue = 0;
+                numberobj_57_currentFormat = 6;
+                numberobj_57_lastValue = 0;
                 stackprotect_count = 0;
                 _voiceIndex = 0;
                 _noteNumber = 0;
@@ -47197,53 +47683,53 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             // member variables
             
-                number numberobj_39_value;
+                number numberobj_44_value;
                 number expr_37_in1;
                 number expr_37_in2;
                 number expr_37_out1;
-                number numberobj_40_value;
+                number numberobj_45_value;
                 number expr_38_in1;
                 number expr_38_in2;
                 number expr_38_out1;
                 number expr_39_in1;
                 number expr_39_out1;
-                number numberobj_41_value;
-                number numberobj_42_value;
-                number numberobj_43_value;
+                number numberobj_46_value;
+                number numberobj_47_value;
+                number numberobj_48_value;
                 number expr_40_in1;
                 number expr_40_in2;
                 number expr_40_out1;
                 number expr_41_in1;
                 number expr_41_in2;
                 number expr_41_out1;
-                number numberobj_44_value;
+                number numberobj_49_value;
                 list message_04_set;
                 number select_02_test1;
                 number expr_42_in1;
                 number expr_42_in2;
                 number expr_42_out1;
-                number numberobj_45_value;
-                number numberobj_46_value;
+                number numberobj_50_value;
+                number numberobj_51_value;
                 number expr_43_in1;
                 number expr_43_in2;
                 number expr_43_out1;
                 number expr_44_in1;
                 number expr_44_out1;
-                number numberobj_47_value;
-                number numberobj_48_value;
+                number numberobj_52_value;
+                number numberobj_53_value;
                 number expr_45_in1;
                 number expr_45_in2;
                 number expr_45_out1;
-                number numberobj_49_value;
+                number numberobj_54_value;
                 number expr_46_in1;
                 number expr_46_in2;
                 number expr_46_out1;
-                number numberobj_50_value;
-                number numberobj_51_value;
+                number numberobj_55_value;
+                number numberobj_56_value;
                 number expr_47_in1;
                 number expr_47_in2;
                 number expr_47_out1;
-                number numberobj_52_value;
+                number numberobj_57_value;
                 MillisecondTime _currentTime;
                 UInt64 audioProcessSampleCount;
                 Index sampleOffsetIntoNextAudioBuffer;
@@ -47254,16 +47740,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
-                Int numberobj_39_currentFormat;
-                number numberobj_39_lastValue;
-                Int numberobj_40_currentFormat;
-                number numberobj_40_lastValue;
-                Int numberobj_41_currentFormat;
-                number numberobj_41_lastValue;
-                Int numberobj_42_currentFormat;
-                number numberobj_42_lastValue;
-                Int numberobj_43_currentFormat;
-                number numberobj_43_lastValue;
                 Int numberobj_44_currentFormat;
                 number numberobj_44_lastValue;
                 Int numberobj_45_currentFormat;
@@ -47282,6 +47758,16 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 number numberobj_51_lastValue;
                 Int numberobj_52_currentFormat;
                 number numberobj_52_lastValue;
+                Int numberobj_53_currentFormat;
+                number numberobj_53_lastValue;
+                Int numberobj_54_currentFormat;
+                number numberobj_54_lastValue;
+                Int numberobj_55_currentFormat;
+                number numberobj_55_lastValue;
+                Int numberobj_56_currentFormat;
+                number numberobj_56_lastValue;
+                Int numberobj_57_currentFormat;
+                number numberobj_57_lastValue;
                 number stackprotect_count;
                 Index _voiceIndex;
                 Int _noteNumber;
@@ -47290,17 +47776,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1586 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5128 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1586()
+            RNBOSubpatcher_5128()
             {}
             
-            ~RNBOSubpatcher_1586()
+            ~RNBOSubpatcher_5128()
             {
                 deallocateSignals();
             }
@@ -47328,30 +47814,30 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 const SampleValue * in1 = (numInputs >= 1 && inputs[0] ? inputs[0] : this->zeroBuffer);
                 const SampleValue * in2 = (numInputs >= 2 && inputs[1] ? inputs[1] : this->zeroBuffer);
                 const SampleValue * in3 = (numInputs >= 3 && inputs[2] ? inputs[2] : this->zeroBuffer);
-                this->dspexpr_28_perform(in2, this->dspexpr_28_in2, this->signals[0], n);
+                this->scopetilde_07_perform(in2, this->zeroBuffer, n);
+                this->welch_tilde_05_perform(in2, this->signals[0], n);
+                this->scopetilde_09_perform(this->signals[0], this->zeroBuffer, n);
+                this->dspexpr_28_perform(in2, this->dspexpr_28_in2, this->signals[1], n);
             
                 this->wrap_tilde_03_perform(
-                    this->signals[0],
+                    this->signals[1],
                     this->wrap_tilde_03_low,
                     this->wrap_tilde_03_high,
-                    this->signals[1],
+                    this->signals[2],
                     n
                 );
             
-                this->welch_tilde_06_perform(this->signals[1], this->signals[0], n);
-                this->scopetilde_08_perform(this->signals[0], this->zeroBuffer, n);
-                this->welch_tilde_05_perform(in2, this->signals[2], n);
-                this->scopetilde_09_perform(this->signals[2], this->zeroBuffer, n);
-                this->scopetilde_07_perform(in2, this->zeroBuffer, n);
-                this->dspexpr_25_perform(in2, in3, this->signals[3], n);
-                this->delaytilde_07_perform(this->signals[3], in1, this->signals[4], n);
-                this->dspexpr_24_perform(this->signals[4], this->signals[2], this->signals[5], n);
-                this->numbertilde_09_perform(this->signals[3], this->dummyBuffer, n);
-                this->dspexpr_27_perform(this->signals[1], in3, this->signals[3], n);
-                this->delaytilde_08_perform(this->signals[3], in1, this->signals[1], n);
-                this->dspexpr_26_perform(this->signals[1], this->signals[0], this->signals[2], n);
-                this->dspexpr_23_perform(this->signals[5], this->signals[2], out1, n);
+                this->welch_tilde_06_perform(this->signals[2], this->signals[1], n);
+                this->scopetilde_08_perform(this->signals[1], this->zeroBuffer, n);
+                this->dspexpr_27_perform(this->signals[2], in3, this->signals[3], n);
                 this->numbertilde_10_perform(this->signals[3], this->dummyBuffer, n);
+                this->delaytilde_08_perform(this->signals[3], in1, this->signals[2], n);
+                this->dspexpr_26_perform(this->signals[2], this->signals[1], this->signals[3], n);
+                this->dspexpr_25_perform(in2, in3, this->signals[1], n);
+                this->numbertilde_09_perform(this->signals[1], this->dummyBuffer, n);
+                this->delaytilde_07_perform(this->signals[1], in1, this->signals[2], n);
+                this->dspexpr_24_perform(this->signals[2], this->signals[0], this->signals[1], n);
+                this->dspexpr_23_perform(this->signals[1], this->signals[3], out1, n);
                 this->stackprotect_perform(n);
                 this->audioProcessSampleCount += this->vs;
             }
@@ -47362,7 +47848,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 if (this->maxvs < maxBlockSize || !this->didAllocateSignals) {
                     Index i;
             
-                    for (i = 0; i < 6; i++) {
+                    for (i = 0; i < 4; i++) {
                         this->signals[i] = resizeSignal(this->signals[i], this->maxvs, maxBlockSize);
                     }
             
@@ -47382,13 +47868,13 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->invsr = 1 / sampleRate;
                 }
             
-                this->scopetilde_08_dspsetup(forceDSPSetup);
-                this->scopetilde_09_dspsetup(forceDSPSetup);
                 this->scopetilde_07_dspsetup(forceDSPSetup);
-                this->delaytilde_07_dspsetup(forceDSPSetup);
-                this->numbertilde_09_dspsetup(forceDSPSetup);
-                this->delaytilde_08_dspsetup(forceDSPSetup);
+                this->scopetilde_09_dspsetup(forceDSPSetup);
+                this->scopetilde_08_dspsetup(forceDSPSetup);
                 this->numbertilde_10_dspsetup(forceDSPSetup);
+                this->delaytilde_08_dspsetup(forceDSPSetup);
+                this->numbertilde_09_dspsetup(forceDSPSetup);
+                this->delaytilde_07_dspsetup(forceDSPSetup);
             
                 if (sampleRateChanged)
                     this->onSampleRateChanged(sampleRate);
@@ -47681,14 +48167,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1586* operator->() {
+            RNBOSubpatcher_5128* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1586* operator->() const {
+            const RNBOSubpatcher_5128* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -47697,8 +48183,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void cancelClockEvents()
             {
-                getEngine()->flushClockEvents(this, 2098551528, false);
                 getEngine()->flushClockEvents(this, -1494586265, false);
+                getEngine()->flushClockEvents(this, 2098551528, false);
             }
             
             inline number linearinterp(number frac, number x, number y) {
@@ -47822,14 +48308,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
-            void numbertilde_09_value_set(number ) {}
-            
             void numbertilde_10_value_set(number ) {}
+            
+            void numbertilde_09_value_set(number ) {}
             
             void deallocateSignals() {
                 Index i;
             
-                for (i = 0; i < 6; i++) {
+                for (i = 0; i < 4; i++) {
                     this->signals[i] = freeSignal(this->signals[i]);
                 }
             
@@ -47884,14 +48370,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->updateTime(time, (ENGINE*)nullptr);
             
                 switch (index) {
-                case 2098551528:
-                    {
-                    this->numbertilde_09_value_set(value);
-                    break;
-                    }
                 case -1494586265:
                     {
                     this->numbertilde_10_value_set(value);
+                    break;
+                    }
+                case 2098551528:
+                    {
+                    this->numbertilde_09_value_set(value);
                     break;
                     }
                 }
@@ -47939,6 +48425,125 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
                     this->getEngine()->sendDataRefUpdated(2);
                 }
+            }
+            
+            void scopetilde_07_perform(const SampleValue * x, const SampleValue * y, Index n) {
+                auto __scopetilde_07_ysign = this->scopetilde_07_ysign;
+                auto __scopetilde_07_ymonitorvalue = this->scopetilde_07_ymonitorvalue;
+                auto __scopetilde_07_xsign = this->scopetilde_07_xsign;
+                auto __scopetilde_07_xmonitorvalue = this->scopetilde_07_xmonitorvalue;
+                auto __scopetilde_07_mode = this->scopetilde_07_mode;
+            
+                for (Index i = 0; i < n; i++) {
+                    number xval = x[(Index)i];
+                    number yval = y[(Index)i];
+            
+                    if (__scopetilde_07_mode == 1) {
+                        number xabsval = rnbo_abs(xval);
+            
+                        if (xabsval > __scopetilde_07_xmonitorvalue) {
+                            __scopetilde_07_xmonitorvalue = xabsval;
+                            __scopetilde_07_xsign = (xval < 0 ? -1 : 1);
+                        }
+            
+                        number yabsval = rnbo_abs(yval);
+            
+                        if (yabsval > __scopetilde_07_ymonitorvalue) {
+                            __scopetilde_07_ymonitorvalue = yabsval;
+                            __scopetilde_07_ysign = (yval < 0 ? -1 : 1);
+                        }
+                    } else {
+                        __scopetilde_07_xmonitorvalue = xval;
+                        __scopetilde_07_xsign = 1;
+                        __scopetilde_07_ymonitorvalue = yval;
+                        __scopetilde_07_ysign = 1;
+                    }
+            
+                    this->scopetilde_07_effectiveCount--;
+            
+                    if (this->scopetilde_07_effectiveCount <= 0) {
+                        this->scopetilde_07_updateEffectiveCount();
+                        this->scopetilde_07_monitorbuffer->push(__scopetilde_07_xmonitorvalue * __scopetilde_07_xsign);
+            
+                        if (__scopetilde_07_mode == 1)
+                            __scopetilde_07_xmonitorvalue = 0;
+            
+                        if (this->scopetilde_07_monitorbuffer->length >= 128 * (1 + 0)) {
+                            ;
+                            this->scopetilde_07_monitorbuffer->length = 0;
+                        }
+                    }
+                }
+            
+                this->scopetilde_07_xmonitorvalue = __scopetilde_07_xmonitorvalue;
+                this->scopetilde_07_xsign = __scopetilde_07_xsign;
+                this->scopetilde_07_ymonitorvalue = __scopetilde_07_ymonitorvalue;
+                this->scopetilde_07_ysign = __scopetilde_07_ysign;
+            }
+            
+            void welch_tilde_05_perform(const Sample * x, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    number __x = x[(Index)i];
+                    __x = (__x > 1 ? 1 : (__x < 0 ? 0 : __x));
+                    number w = (__x - 0.5) * 2;
+                    out1[(Index)i] = 1 - w * w;
+                }
+            }
+            
+            void scopetilde_09_perform(const SampleValue * x, const SampleValue * y, Index n) {
+                auto __scopetilde_09_ysign = this->scopetilde_09_ysign;
+                auto __scopetilde_09_ymonitorvalue = this->scopetilde_09_ymonitorvalue;
+                auto __scopetilde_09_xsign = this->scopetilde_09_xsign;
+                auto __scopetilde_09_xmonitorvalue = this->scopetilde_09_xmonitorvalue;
+                auto __scopetilde_09_mode = this->scopetilde_09_mode;
+            
+                for (Index i = 0; i < n; i++) {
+                    number xval = x[(Index)i];
+                    number yval = y[(Index)i];
+            
+                    if (__scopetilde_09_mode == 1) {
+                        number xabsval = rnbo_abs(xval);
+            
+                        if (xabsval > __scopetilde_09_xmonitorvalue) {
+                            __scopetilde_09_xmonitorvalue = xabsval;
+                            __scopetilde_09_xsign = (xval < 0 ? -1 : 1);
+                        }
+            
+                        number yabsval = rnbo_abs(yval);
+            
+                        if (yabsval > __scopetilde_09_ymonitorvalue) {
+                            __scopetilde_09_ymonitorvalue = yabsval;
+                            __scopetilde_09_ysign = (yval < 0 ? -1 : 1);
+                        }
+                    } else {
+                        __scopetilde_09_xmonitorvalue = xval;
+                        __scopetilde_09_xsign = 1;
+                        __scopetilde_09_ymonitorvalue = yval;
+                        __scopetilde_09_ysign = 1;
+                    }
+            
+                    this->scopetilde_09_effectiveCount--;
+            
+                    if (this->scopetilde_09_effectiveCount <= 0) {
+                        this->scopetilde_09_updateEffectiveCount();
+                        this->scopetilde_09_monitorbuffer->push(__scopetilde_09_xmonitorvalue * __scopetilde_09_xsign);
+            
+                        if (__scopetilde_09_mode == 1)
+                            __scopetilde_09_xmonitorvalue = 0;
+            
+                        if (this->scopetilde_09_monitorbuffer->length >= 128 * (1 + 0)) {
+                            ;
+                            this->scopetilde_09_monitorbuffer->length = 0;
+                        }
+                    }
+                }
+            
+                this->scopetilde_09_xmonitorvalue = __scopetilde_09_xmonitorvalue;
+                this->scopetilde_09_xsign = __scopetilde_09_xsign;
+                this->scopetilde_09_ymonitorvalue = __scopetilde_09_ymonitorvalue;
+                this->scopetilde_09_ysign = __scopetilde_09_ysign;
             }
             
             void dspexpr_28_perform(const Sample * in1, number in2, SampleValue * out1, Index n) {
@@ -48051,231 +48656,53 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->scopetilde_08_ysign = __scopetilde_08_ysign;
             }
             
-            void welch_tilde_05_perform(const Sample * x, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    number __x = x[(Index)i];
-                    __x = (__x > 1 ? 1 : (__x < 0 ? 0 : __x));
-                    number w = (__x - 0.5) * 2;
-                    out1[(Index)i] = 1 - w * w;
-                }
-            }
-            
-            void scopetilde_09_perform(const SampleValue * x, const SampleValue * y, Index n) {
-                auto __scopetilde_09_ysign = this->scopetilde_09_ysign;
-                auto __scopetilde_09_ymonitorvalue = this->scopetilde_09_ymonitorvalue;
-                auto __scopetilde_09_xsign = this->scopetilde_09_xsign;
-                auto __scopetilde_09_xmonitorvalue = this->scopetilde_09_xmonitorvalue;
-                auto __scopetilde_09_mode = this->scopetilde_09_mode;
-            
-                for (Index i = 0; i < n; i++) {
-                    number xval = x[(Index)i];
-                    number yval = y[(Index)i];
-            
-                    if (__scopetilde_09_mode == 1) {
-                        number xabsval = rnbo_abs(xval);
-            
-                        if (xabsval > __scopetilde_09_xmonitorvalue) {
-                            __scopetilde_09_xmonitorvalue = xabsval;
-                            __scopetilde_09_xsign = (xval < 0 ? -1 : 1);
-                        }
-            
-                        number yabsval = rnbo_abs(yval);
-            
-                        if (yabsval > __scopetilde_09_ymonitorvalue) {
-                            __scopetilde_09_ymonitorvalue = yabsval;
-                            __scopetilde_09_ysign = (yval < 0 ? -1 : 1);
-                        }
-                    } else {
-                        __scopetilde_09_xmonitorvalue = xval;
-                        __scopetilde_09_xsign = 1;
-                        __scopetilde_09_ymonitorvalue = yval;
-                        __scopetilde_09_ysign = 1;
-                    }
-            
-                    this->scopetilde_09_effectiveCount--;
-            
-                    if (this->scopetilde_09_effectiveCount <= 0) {
-                        this->scopetilde_09_updateEffectiveCount();
-                        this->scopetilde_09_monitorbuffer->push(__scopetilde_09_xmonitorvalue * __scopetilde_09_xsign);
-            
-                        if (__scopetilde_09_mode == 1)
-                            __scopetilde_09_xmonitorvalue = 0;
-            
-                        if (this->scopetilde_09_monitorbuffer->length >= 128 * (1 + 0)) {
-                            ;
-                            this->scopetilde_09_monitorbuffer->length = 0;
-                        }
-                    }
-                }
-            
-                this->scopetilde_09_xmonitorvalue = __scopetilde_09_xmonitorvalue;
-                this->scopetilde_09_xsign = __scopetilde_09_xsign;
-                this->scopetilde_09_ymonitorvalue = __scopetilde_09_ymonitorvalue;
-                this->scopetilde_09_ysign = __scopetilde_09_ysign;
-            }
-            
-            void scopetilde_07_perform(const SampleValue * x, const SampleValue * y, Index n) {
-                auto __scopetilde_07_ysign = this->scopetilde_07_ysign;
-                auto __scopetilde_07_ymonitorvalue = this->scopetilde_07_ymonitorvalue;
-                auto __scopetilde_07_xsign = this->scopetilde_07_xsign;
-                auto __scopetilde_07_xmonitorvalue = this->scopetilde_07_xmonitorvalue;
-                auto __scopetilde_07_mode = this->scopetilde_07_mode;
-            
-                for (Index i = 0; i < n; i++) {
-                    number xval = x[(Index)i];
-                    number yval = y[(Index)i];
-            
-                    if (__scopetilde_07_mode == 1) {
-                        number xabsval = rnbo_abs(xval);
-            
-                        if (xabsval > __scopetilde_07_xmonitorvalue) {
-                            __scopetilde_07_xmonitorvalue = xabsval;
-                            __scopetilde_07_xsign = (xval < 0 ? -1 : 1);
-                        }
-            
-                        number yabsval = rnbo_abs(yval);
-            
-                        if (yabsval > __scopetilde_07_ymonitorvalue) {
-                            __scopetilde_07_ymonitorvalue = yabsval;
-                            __scopetilde_07_ysign = (yval < 0 ? -1 : 1);
-                        }
-                    } else {
-                        __scopetilde_07_xmonitorvalue = xval;
-                        __scopetilde_07_xsign = 1;
-                        __scopetilde_07_ymonitorvalue = yval;
-                        __scopetilde_07_ysign = 1;
-                    }
-            
-                    this->scopetilde_07_effectiveCount--;
-            
-                    if (this->scopetilde_07_effectiveCount <= 0) {
-                        this->scopetilde_07_updateEffectiveCount();
-                        this->scopetilde_07_monitorbuffer->push(__scopetilde_07_xmonitorvalue * __scopetilde_07_xsign);
-            
-                        if (__scopetilde_07_mode == 1)
-                            __scopetilde_07_xmonitorvalue = 0;
-            
-                        if (this->scopetilde_07_monitorbuffer->length >= 128 * (1 + 0)) {
-                            ;
-                            this->scopetilde_07_monitorbuffer->length = 0;
-                        }
-                    }
-                }
-            
-                this->scopetilde_07_xmonitorvalue = __scopetilde_07_xmonitorvalue;
-                this->scopetilde_07_xsign = __scopetilde_07_xsign;
-                this->scopetilde_07_ymonitorvalue = __scopetilde_07_ymonitorvalue;
-                this->scopetilde_07_ysign = __scopetilde_07_ysign;
-            }
-            
-            void dspexpr_25_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
-                }
-            }
-            
-            void delaytilde_07_perform(
-                const Sample * delay,
-                const SampleValue * input,
-                SampleValue * output,
-                Index n
-            ) {
-                auto __delaytilde_07_crossfadeDelay = this->delaytilde_07_crossfadeDelay;
-                auto __delaytilde_07_rampInSamples = this->delaytilde_07_rampInSamples;
-                auto __delaytilde_07_ramp = this->delaytilde_07_ramp;
-                auto __delaytilde_07_lastDelay = this->delaytilde_07_lastDelay;
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__delaytilde_07_lastDelay == -1) {
-                        __delaytilde_07_lastDelay = delay[(Index)i];
-                    }
-            
-                    if (__delaytilde_07_ramp > 0) {
-                        number factor = __delaytilde_07_ramp / __delaytilde_07_rampInSamples;
-                        output[(Index)i] = this->delaytilde_07_del_read(__delaytilde_07_crossfadeDelay, 0) * factor + this->delaytilde_07_del_read(__delaytilde_07_lastDelay, 0) * (1. - factor);
-                        __delaytilde_07_ramp--;
-                    } else {
-                        number effectiveDelay = delay[(Index)i];
-            
-                        if (effectiveDelay != __delaytilde_07_lastDelay) {
-                            __delaytilde_07_ramp = __delaytilde_07_rampInSamples;
-                            __delaytilde_07_crossfadeDelay = __delaytilde_07_lastDelay;
-                            __delaytilde_07_lastDelay = effectiveDelay;
-                            output[(Index)i] = this->delaytilde_07_del_read(__delaytilde_07_crossfadeDelay, 0);
-                            __delaytilde_07_ramp--;
-                        } else {
-                            output[(Index)i] = this->delaytilde_07_del_read(effectiveDelay, 0);
-                        }
-                    }
-            
-                    this->delaytilde_07_del_write(input[(Index)i]);
-                    this->delaytilde_07_del_step();
-                }
-            
-                this->delaytilde_07_lastDelay = __delaytilde_07_lastDelay;
-                this->delaytilde_07_ramp = __delaytilde_07_ramp;
-                this->delaytilde_07_crossfadeDelay = __delaytilde_07_crossfadeDelay;
-            }
-            
-            void dspexpr_24_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
-                }
-            }
-            
-            void numbertilde_09_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_09_currentIntervalInSamples = this->numbertilde_09_currentIntervalInSamples;
-                auto __numbertilde_09_lastValue = this->numbertilde_09_lastValue;
-                auto __numbertilde_09_currentInterval = this->numbertilde_09_currentInterval;
-                auto __numbertilde_09_rampInSamples = this->numbertilde_09_rampInSamples;
-                auto __numbertilde_09_outValue = this->numbertilde_09_outValue;
-                auto __numbertilde_09_currentMode = this->numbertilde_09_currentMode;
-                number monitorvalue = input_signal[0];
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_09_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_09_smooth_next(
-                            __numbertilde_09_outValue,
-                            __numbertilde_09_rampInSamples,
-                            __numbertilde_09_rampInSamples
-                        );
-                    } else {
-                        output[(Index)i] = input_signal[(Index)i];
-                    }
-                }
-            
-                __numbertilde_09_currentInterval -= n;
-            
-                if (monitorvalue != __numbertilde_09_lastValue && __numbertilde_09_currentInterval <= 0) {
-                    __numbertilde_09_currentInterval = __numbertilde_09_currentIntervalInSamples;
-            
-                    this->getEngine()->scheduleClockEventWithValue(
-                        this,
-                        2098551528,
-                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
-                        monitorvalue
-                    );;
-            
-                    __numbertilde_09_lastValue = monitorvalue;
-                    ;
-                }
-            
-                this->numbertilde_09_currentInterval = __numbertilde_09_currentInterval;
-                this->numbertilde_09_lastValue = __numbertilde_09_lastValue;
-            }
-            
             void dspexpr_27_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
                 Index i;
             
                 for (i = 0; i < (Index)n; i++) {
                     out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
                 }
+            }
+            
+            void numbertilde_10_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_10_currentIntervalInSamples = this->numbertilde_10_currentIntervalInSamples;
+                auto __numbertilde_10_lastValue = this->numbertilde_10_lastValue;
+                auto __numbertilde_10_currentInterval = this->numbertilde_10_currentInterval;
+                auto __numbertilde_10_rampInSamples = this->numbertilde_10_rampInSamples;
+                auto __numbertilde_10_outValue = this->numbertilde_10_outValue;
+                auto __numbertilde_10_currentMode = this->numbertilde_10_currentMode;
+                number monitorvalue = input_signal[0];
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__numbertilde_10_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_10_smooth_next(
+                            __numbertilde_10_outValue,
+                            __numbertilde_10_rampInSamples,
+                            __numbertilde_10_rampInSamples
+                        );
+                    } else {
+                        output[(Index)i] = input_signal[(Index)i];
+                    }
+                }
+            
+                __numbertilde_10_currentInterval -= n;
+            
+                if (monitorvalue != __numbertilde_10_lastValue && __numbertilde_10_currentInterval <= 0) {
+                    __numbertilde_10_currentInterval = __numbertilde_10_currentIntervalInSamples;
+            
+                    this->getEngine()->scheduleClockEventWithValue(
+                        this,
+                        -1494586265,
+                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
+                        monitorvalue
+                    );;
+            
+                    __numbertilde_10_lastValue = monitorvalue;
+                    ;
+                }
+            
+                this->numbertilde_10_currentInterval = __numbertilde_10_currentInterval;
+                this->numbertilde_10_lastValue = __numbertilde_10_lastValue;
             }
             
             void delaytilde_08_perform(
@@ -48329,53 +48756,112 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
-            void dspexpr_23_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+            void dspexpr_25_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
                 Index i;
             
                 for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] + in2[(Index)i];//#map:_###_obj_###_:1
+                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
                 }
             }
             
-            void numbertilde_10_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_10_currentIntervalInSamples = this->numbertilde_10_currentIntervalInSamples;
-                auto __numbertilde_10_lastValue = this->numbertilde_10_lastValue;
-                auto __numbertilde_10_currentInterval = this->numbertilde_10_currentInterval;
-                auto __numbertilde_10_rampInSamples = this->numbertilde_10_rampInSamples;
-                auto __numbertilde_10_outValue = this->numbertilde_10_outValue;
-                auto __numbertilde_10_currentMode = this->numbertilde_10_currentMode;
+            void numbertilde_09_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_09_currentIntervalInSamples = this->numbertilde_09_currentIntervalInSamples;
+                auto __numbertilde_09_lastValue = this->numbertilde_09_lastValue;
+                auto __numbertilde_09_currentInterval = this->numbertilde_09_currentInterval;
+                auto __numbertilde_09_rampInSamples = this->numbertilde_09_rampInSamples;
+                auto __numbertilde_09_outValue = this->numbertilde_09_outValue;
+                auto __numbertilde_09_currentMode = this->numbertilde_09_currentMode;
                 number monitorvalue = input_signal[0];
             
                 for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_10_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_10_smooth_next(
-                            __numbertilde_10_outValue,
-                            __numbertilde_10_rampInSamples,
-                            __numbertilde_10_rampInSamples
+                    if (__numbertilde_09_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_09_smooth_next(
+                            __numbertilde_09_outValue,
+                            __numbertilde_09_rampInSamples,
+                            __numbertilde_09_rampInSamples
                         );
                     } else {
                         output[(Index)i] = input_signal[(Index)i];
                     }
                 }
             
-                __numbertilde_10_currentInterval -= n;
+                __numbertilde_09_currentInterval -= n;
             
-                if (monitorvalue != __numbertilde_10_lastValue && __numbertilde_10_currentInterval <= 0) {
-                    __numbertilde_10_currentInterval = __numbertilde_10_currentIntervalInSamples;
+                if (monitorvalue != __numbertilde_09_lastValue && __numbertilde_09_currentInterval <= 0) {
+                    __numbertilde_09_currentInterval = __numbertilde_09_currentIntervalInSamples;
             
                     this->getEngine()->scheduleClockEventWithValue(
                         this,
-                        -1494586265,
+                        2098551528,
                         this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
                         monitorvalue
                     );;
             
-                    __numbertilde_10_lastValue = monitorvalue;
+                    __numbertilde_09_lastValue = monitorvalue;
                     ;
                 }
             
-                this->numbertilde_10_currentInterval = __numbertilde_10_currentInterval;
-                this->numbertilde_10_lastValue = __numbertilde_10_lastValue;
+                this->numbertilde_09_currentInterval = __numbertilde_09_currentInterval;
+                this->numbertilde_09_lastValue = __numbertilde_09_lastValue;
+            }
+            
+            void delaytilde_07_perform(
+                const Sample * delay,
+                const SampleValue * input,
+                SampleValue * output,
+                Index n
+            ) {
+                auto __delaytilde_07_crossfadeDelay = this->delaytilde_07_crossfadeDelay;
+                auto __delaytilde_07_rampInSamples = this->delaytilde_07_rampInSamples;
+                auto __delaytilde_07_ramp = this->delaytilde_07_ramp;
+                auto __delaytilde_07_lastDelay = this->delaytilde_07_lastDelay;
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__delaytilde_07_lastDelay == -1) {
+                        __delaytilde_07_lastDelay = delay[(Index)i];
+                    }
+            
+                    if (__delaytilde_07_ramp > 0) {
+                        number factor = __delaytilde_07_ramp / __delaytilde_07_rampInSamples;
+                        output[(Index)i] = this->delaytilde_07_del_read(__delaytilde_07_crossfadeDelay, 0) * factor + this->delaytilde_07_del_read(__delaytilde_07_lastDelay, 0) * (1. - factor);
+                        __delaytilde_07_ramp--;
+                    } else {
+                        number effectiveDelay = delay[(Index)i];
+            
+                        if (effectiveDelay != __delaytilde_07_lastDelay) {
+                            __delaytilde_07_ramp = __delaytilde_07_rampInSamples;
+                            __delaytilde_07_crossfadeDelay = __delaytilde_07_lastDelay;
+                            __delaytilde_07_lastDelay = effectiveDelay;
+                            output[(Index)i] = this->delaytilde_07_del_read(__delaytilde_07_crossfadeDelay, 0);
+                            __delaytilde_07_ramp--;
+                        } else {
+                            output[(Index)i] = this->delaytilde_07_del_read(effectiveDelay, 0);
+                        }
+                    }
+            
+                    this->delaytilde_07_del_write(input[(Index)i]);
+                    this->delaytilde_07_del_step();
+                }
+            
+                this->delaytilde_07_lastDelay = __delaytilde_07_lastDelay;
+                this->delaytilde_07_ramp = __delaytilde_07_ramp;
+                this->delaytilde_07_crossfadeDelay = __delaytilde_07_crossfadeDelay;
+            }
+            
+            void dspexpr_24_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
+                }
+            }
+            
+            void dspexpr_23_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out1[(Index)i] = in1[(Index)i] + in2[(Index)i];//#map:_###_obj_###_:1
+                }
             }
             
             void stackprotect_perform(Index n) {
@@ -49089,8 +49575,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 signals[1] = nullptr;
                 signals[2] = nullptr;
                 signals[3] = nullptr;
-                signals[4] = nullptr;
-                signals[5] = nullptr;
                 didAllocateSignals = 0;
                 vs = 0;
                 maxvs = 0;
@@ -49207,7 +49691,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Index sampleOffsetIntoNextAudioBuffer;
                 signal zeroBuffer;
                 signal dummyBuffer;
-                SampleValue * signals[6];
+                SampleValue * signals[4];
                 bool didAllocateSignals;
                 Index vs;
                 Index maxvs;
@@ -49294,17 +49778,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1587 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5129 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1587()
+            RNBOSubpatcher_5129()
             {}
             
-            ~RNBOSubpatcher_1587()
+            ~RNBOSubpatcher_5129()
             {
                 deallocateSignals();
             }
@@ -49571,33 +50055,57 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 switch (tag) {
                 case TAG("valin"):
                     {
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-27") == objectId)
+                        this->numberobj_58_valin_set(payload);
+            
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-100") == objectId)
-                        this->numberobj_53_valin_set(payload);
+                        this->numberobj_59_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-25") == objectId)
+                        this->numberobj_60_valin_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-9") == objectId)
-                        this->numberobj_54_valin_set(payload);
+                        this->numberobj_61_valin_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-105") == objectId)
-                        this->numberobj_55_valin_set(payload);
+                        this->numberobj_62_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-15") == objectId)
+                        this->numberobj_63_valin_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-14") == objectId)
-                        this->numberobj_56_valin_set(payload);
+                        this->numberobj_64_valin_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-22") == objectId)
+                        this->numberobj_65_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-27") == objectId)
+                        this->numberobj_58_format_set(payload);
+            
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-100") == objectId)
-                        this->numberobj_53_format_set(payload);
+                        this->numberobj_59_format_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-25") == objectId)
+                        this->numberobj_60_format_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-9") == objectId)
-                        this->numberobj_54_format_set(payload);
+                        this->numberobj_61_format_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-105") == objectId)
-                        this->numberobj_55_format_set(payload);
+                        this->numberobj_62_format_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-15") == objectId)
+                        this->numberobj_63_format_set(payload);
             
                     if (TAG("pitchShifter2/pitchQuantizer/number_obj-14") == objectId)
-                        this->numberobj_56_format_set(payload);
+                        this->numberobj_64_format_set(payload);
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/number_obj-22") == objectId)
+                        this->numberobj_65_format_set(payload);
             
                     break;
                     }
@@ -49619,11 +50127,26 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     }
                 case TAG("bangin"):
                     {
-                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-60") == objectId)
-                        this->button_03_bangin_bang();
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-17") == objectId)
+                        this->button_08_bangin_bang();
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-6") == objectId)
+                        this->button_09_bangin_bang();
             
                     if (TAG("pitchShifter2/pitchQuantizer/button_obj-67") == objectId)
-                        this->button_04_bangin_bang();
+                        this->button_10_bangin_bang();
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-60") == objectId)
+                        this->button_11_bangin_bang();
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-40") == objectId)
+                        this->button_12_bangin_bang();
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-10") == objectId)
+                        this->button_13_bangin_bang();
+            
+                    if (TAG("pitchShifter2/pitchQuantizer/button_obj-19") == objectId)
+                        this->button_14_bangin_bang();
             
                     break;
                     }
@@ -49636,13 +50159,21 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     {
                     return "valout";
                     }
-                case TAG("pitchShifter2/pitchQuantizer/number_obj-100"):
+                case TAG("pitchShifter2/pitchQuantizer/number_obj-27"):
                     {
-                    return "pitchShifter2/pitchQuantizer/number_obj-100";
+                    return "pitchShifter2/pitchQuantizer/number_obj-27";
                     }
                 case TAG("setup"):
                     {
                     return "setup";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/number_obj-100"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/number_obj-100";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/number_obj-25"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/number_obj-25";
                     }
                 case TAG("pitchShifter2/pitchQuantizer/number_obj-9"):
                     {
@@ -49652,6 +50183,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     {
                     return "pitchShifter2/pitchQuantizer/number_obj-105";
                     }
+                case TAG("pitchShifter2/pitchQuantizer/number_obj-15"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/number_obj-15";
+                    }
                 case TAG("pitchShifter2/pitchQuantizer/number_obj-14"):
                     {
                     return "pitchShifter2/pitchQuantizer/number_obj-14";
@@ -49660,13 +50195,37 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     {
                     return "bangout";
                     }
-                case TAG("pitchShifter2/pitchQuantizer/button_obj-60"):
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-17"):
                     {
-                    return "pitchShifter2/pitchQuantizer/button_obj-60";
+                    return "pitchShifter2/pitchQuantizer/button_obj-17";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-6"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/button_obj-6";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/number_obj-22"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/number_obj-22";
                     }
                 case TAG("pitchShifter2/pitchQuantizer/button_obj-67"):
                     {
                     return "pitchShifter2/pitchQuantizer/button_obj-67";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-60"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/button_obj-60";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-40"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/button_obj-40";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-10"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/button_obj-10";
+                    }
+                case TAG("pitchShifter2/pitchQuantizer/button_obj-19"):
+                    {
+                    return "pitchShifter2/pitchQuantizer/button_obj-19";
                     }
                 case TAG("valin"):
                     {
@@ -49733,14 +50292,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1587* operator->() {
+            RNBOSubpatcher_5129* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1587* operator->() const {
+            const RNBOSubpatcher_5129* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -49800,6 +50359,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 return f;
             }
             
+            template<typename... T> void post(T ...args) {
+                console->log(args...);
+            }
+            
             number fromnormalized(Index index, number normalizedValue) {
                 return this->convertFromNormalizedParameterValue(index, normalizedValue);
             }
@@ -49814,55 +50377,99 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->param_12_lastValue = this->param_12_value;
                 }
             
-                this->expr_48_in2_set(v);
+                this->numberobj_60_value_set(v);
             }
             
             MillisecondTime getPatcherTime() const {
                 return this->_currentTime;
             }
             
-            void numberobj_53_valin_set(number v) {
-                this->numberobj_53_value_set(v);
+            void numberobj_58_valin_set(number v) {
+                this->numberobj_58_value_set(v);
             }
             
-            void numberobj_53_format_set(number v) {
-                this->numberobj_53_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_58_format_set(number v) {
+                this->numberobj_58_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
-            void numberobj_54_valin_set(number v) {
-                this->numberobj_54_value_set(v);
+            void numberobj_59_valin_set(number v) {
+                this->numberobj_59_value_set(v);
             }
             
-            void numberobj_54_format_set(number v) {
-                this->numberobj_54_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_59_format_set(number v) {
+                this->numberobj_59_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
-            void numberobj_55_valin_set(number v) {
-                this->numberobj_55_value_set(v);
+            void numberobj_60_valin_set(number v) {
+                this->numberobj_60_value_set(v);
             }
             
-            void numberobj_55_format_set(number v) {
-                this->numberobj_55_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_60_format_set(number v) {
+                this->numberobj_60_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
-            void numberobj_56_valin_set(number v) {
-                this->numberobj_56_value_set(v);
+            void numberobj_61_valin_set(number v) {
+                this->numberobj_61_value_set(v);
             }
             
-            void numberobj_56_format_set(number v) {
-                this->numberobj_56_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_61_format_set(number v) {
+                this->numberobj_61_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_62_valin_set(number v) {
+                this->numberobj_62_value_set(v);
+            }
+            
+            void numberobj_62_format_set(number v) {
+                this->numberobj_62_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_63_valin_set(number v) {
+                this->numberobj_63_value_set(v);
+            }
+            
+            void numberobj_63_format_set(number v) {
+                this->numberobj_63_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void numberobj_64_valin_set(number v) {
+                this->numberobj_64_value_set(v);
+            }
+            
+            void numberobj_64_format_set(number v) {
+                this->numberobj_64_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void loadbang_05_startupbang_bang() {
                 this->loadbang_05_output_bang();
             }
             
-            void button_03_bangin_bang() {
-                this->button_03_bangval_bang();
+            void button_08_bangin_bang() {
+                this->button_08_bangval_bang();
             }
             
-            void button_04_bangin_bang() {
-                this->button_04_bangval_bang();
+            void button_09_bangin_bang() {
+                this->button_09_bangval_bang();
+            }
+            
+            void numberobj_65_valin_set(number v) {
+                this->numberobj_65_value_set(v);
+            }
+            
+            void numberobj_65_format_set(number v) {
+                this->numberobj_65_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            }
+            
+            void button_10_bangin_bang() {
+                this->button_10_bangval_bang();
+            }
+            
+            void button_11_bangin_bang() {
+                this->button_11_bangval_bang();
+            }
+            
+            void button_12_bangin_bang() {
+                this->button_12_bangval_bang();
             }
             
             void metro_02_tick_bang() {
@@ -49877,6 +50484,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                         this->getEngine()->scheduleClockEvent(this, 1935387534, this->metro_02_interval + this->_currentTime);;
                     }
                 }
+            }
+            
+            void button_13_bangin_bang() {
+                this->button_13_bangval_bang();
+            }
+            
+            void button_14_bangin_bang() {
+                this->button_14_bangval_bang();
             }
             
             void deallocateSignals() {
@@ -49900,12 +50515,16 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
+                this->numberobj_58_init();
                 this->ftom_03_innerScala_init();
                 this->ftom_03_init();
-                this->numberobj_53_init();
-                this->numberobj_54_init();
-                this->numberobj_55_init();
-                this->numberobj_56_init();
+                this->numberobj_59_init();
+                this->numberobj_60_init();
+                this->numberobj_61_init();
+                this->numberobj_62_init();
+                this->numberobj_63_init();
+                this->numberobj_64_init();
+                this->numberobj_65_init();
             }
             
             Index getIsMuted()  {
@@ -49985,9 +50604,25 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->codebox_02_in2 = v;
             }
             
+            void numberobj_63_output_set(number v) {
+                this->codebox_02_in2_set(v);
+            }
+            
+            void numberobj_63_value_set(number v) {
+                this->numberobj_63_value_setter(v);
+                v = this->numberobj_63_value;
+                number localvalue = v;
+            
+                if (this->numberobj_63_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_63_output_set(localvalue);
+            }
+            
             void expr_51_out1_set(number v) {
                 this->expr_51_out1 = v;
-                this->codebox_02_in2_set(this->expr_51_out1);
+                this->numberobj_63_value_set(this->expr_51_out1);
             }
             
             void expr_51_in1_set(number in1) {
@@ -50002,27 +50637,27 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void expr_50_in1_set(number in1) {
                 this->expr_50_in1 = in1;
-                this->expr_50_out1_set(trunc(this->expr_50_in1));//#map:pitchShifter2/pitchQuantizer/trunc_obj-27:1
+                this->expr_50_out1_set(trunc(this->expr_50_in1));//#map:pitchShifter2/pitchQuantizer/trunc_obj-23:1
             }
             
-            void numberobj_55_output_set(number v) {
+            void numberobj_62_output_set(number v) {
                 this->expr_50_in1_set(v);
             }
             
-            void numberobj_55_value_set(number v) {
-                this->numberobj_55_value_setter(v);
-                v = this->numberobj_55_value;
+            void numberobj_62_value_set(number v) {
+                this->numberobj_62_value_setter(v);
+                v = this->numberobj_62_value;
                 number localvalue = v;
             
-                if (this->numberobj_55_currentFormat != 6) {
+                if (this->numberobj_62_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_55_output_set(localvalue);
+                this->numberobj_62_output_set(localvalue);
             }
             
             void eventinlet_52_out1_number_set(number v) {
-                this->numberobj_55_value_set(v);
+                this->numberobj_62_value_set(v);
             }
             
             void gate_02_onoff_set(number v) {
@@ -50036,25 +50671,41 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void expr_52_in1_set(number in1) {
                 this->expr_52_in1 = in1;
-                this->expr_52_out1_set(trunc(this->expr_52_in1));//#map:pitchShifter2/pitchQuantizer/trunc_obj-45:1
+                this->expr_52_out1_set(trunc(this->expr_52_in1));//#map:pitchShifter2/pitchQuantizer/trunc_obj-41:1
             }
             
-            void eventinlet_53_out1_number_set(number v) {
+            void numberobj_65_output_set(number v) {
                 this->expr_52_in1_set(v);
             }
             
-            void numberobj_54_output_set(number ) {}
-            
-            void numberobj_54_value_set(number v) {
-                this->numberobj_54_value_setter(v);
-                v = this->numberobj_54_value;
+            void numberobj_65_value_set(number v) {
+                this->numberobj_65_value_setter(v);
+                v = this->numberobj_65_value;
                 number localvalue = v;
             
-                if (this->numberobj_54_currentFormat != 6) {
+                if (this->numberobj_65_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_54_output_set(localvalue);
+                this->numberobj_65_output_set(localvalue);
+            }
+            
+            void eventinlet_53_out1_number_set(number v) {
+                this->numberobj_65_value_set(v);
+            }
+            
+            void numberobj_61_output_set(number ) {}
+            
+            void numberobj_61_value_set(number v) {
+                this->numberobj_61_value_setter(v);
+                v = this->numberobj_61_value;
+                number localvalue = v;
+            
+                if (this->numberobj_61_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_61_output_set(localvalue);
             }
             
             void eventoutlet_08_in1_number_set(number v) {
@@ -50064,27 +50715,27 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void codebox_02_out1_set(number v) {
                 this->codebox_02_out1 = v;
-                this->numberobj_54_value_set(this->codebox_02_out1);
+                this->numberobj_61_value_set(this->codebox_02_out1);
                 this->eventoutlet_08_in1_number_set(this->codebox_02_out1);
             }
             
-            void numberobj_56_output_set(number ) {}
+            void numberobj_64_output_set(number ) {}
             
-            void numberobj_56_value_set(number v) {
-                this->numberobj_56_value_setter(v);
-                v = this->numberobj_56_value;
+            void numberobj_64_value_set(number v) {
+                this->numberobj_64_value_setter(v);
+                v = this->numberobj_64_value;
                 number localvalue = v;
             
-                if (this->numberobj_56_currentFormat != 6) {
+                if (this->numberobj_64_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_56_output_set(localvalue);
+                this->numberobj_64_output_set(localvalue);
             }
             
             void codebox_02_out2_set(number v) {
                 this->codebox_02_out2 = v;
-                this->numberobj_56_value_set(this->codebox_02_out2);
+                this->numberobj_64_value_set(this->codebox_02_out2);
             }
             
             void codebox_02_in1_set(number in1) {
@@ -50128,29 +50779,30 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     }//#map:_###_obj_###_:25
                 }//#map:pitchShifter2/pitchQuantizer/codebox_obj-7:10
             
+                this->post(scalaFile);//#map:pitchShifter2/pitchQuantizer/codebox_obj-7:49
                 this->codebox_02_out1_set(midiQuantized);//#map:pitchShifter2/pitchQuantizer/codebox_obj-7:50
                 this->codebox_02_out2_set(delta);//#map:pitchShifter2/pitchQuantizer/codebox_obj-7:51
             }
             
-            void numberobj_53_output_set(number v) {
+            void numberobj_59_output_set(number v) {
                 this->codebox_02_in1_set(v);
             }
             
-            void numberobj_53_value_set(number v) {
-                this->numberobj_53_value_setter(v);
-                v = this->numberobj_53_value;
+            void numberobj_59_value_set(number v) {
+                this->numberobj_59_value_setter(v);
+                v = this->numberobj_59_value;
                 number localvalue = v;
             
-                if (this->numberobj_53_currentFormat != 6) {
+                if (this->numberobj_59_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_53_output_set(localvalue);
+                this->numberobj_59_output_set(localvalue);
             }
             
             void expr_48_out1_set(number v) {
                 this->expr_48_out1 = v;
-                this->numberobj_53_value_set(this->expr_48_out1);
+                this->numberobj_59_value_set(this->expr_48_out1);
             }
             
             void expr_48_in1_set(number in1) {
@@ -50158,18 +50810,26 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->expr_48_out1_set(this->expr_48_in1 + this->expr_48_in2);//#map:pitchShifter2/pitchQuantizer/+_obj-28:1
             }
             
-            void expr_48_in2_set(number v) {
-                this->expr_48_in2 = v;
-                this->expr_48_in1_set(this->expr_48_in1);
+            void numberobj_58_output_set(number v) {
+                this->expr_48_in1_set(v);
+            }
+            
+            void numberobj_58_value_set(number v) {
+                this->numberobj_58_value_setter(v);
+                v = this->numberobj_58_value;
+                number localvalue = v;
+            
+                if (this->numberobj_58_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_58_output_set(localvalue);
             }
             
             template<typename LISTTYPE> void ftom_03_out_set(const LISTTYPE& v) {
                 {
-                    if (v->length > 1)
-                        this->expr_48_in2_set(v[1]);
-            
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->expr_48_in1_set(converted);
+                    this->numberobj_58_value_set(converted);
                 }
             }
             
@@ -50222,40 +50882,47 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->ftom_03_frequency_set(v);
             }
             
-            void numberobj_55_value_bang() {
-                number v = this->numberobj_55_value;
+            void numberobj_62_value_bang() {
+                number v = this->numberobj_62_value;
                 number localvalue = v;
             
-                if (this->numberobj_55_currentFormat != 6) {
+                if (this->numberobj_62_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_55_output_set(localvalue);
+                this->numberobj_62_output_set(localvalue);
             }
             
             void eventinlet_52_out1_bang_bang() {
-                this->numberobj_55_value_bang();
+                this->numberobj_62_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_52_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_55_value_set(converted);
+                    this->numberobj_62_value_set(converted);
                 }
             }
             
-            void expr_52_in1_bang() {
-                this->expr_52_out1_set(trunc(this->expr_52_in1));//#map:pitchShifter2/pitchQuantizer/trunc_obj-45:1
+            void numberobj_65_value_bang() {
+                number v = this->numberobj_65_value;
+                number localvalue = v;
+            
+                if (this->numberobj_65_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_65_output_set(localvalue);
             }
             
             void eventinlet_53_out1_bang_bang() {
-                this->expr_52_in1_bang();
+                this->numberobj_65_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_53_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->expr_52_in1_set(converted);
+                    this->numberobj_65_value_set(converted);
                 }
             }
             
@@ -50264,56 +50931,172 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 return v;
             }
             
+            void expr_48_in2_set(number v) {
+                this->expr_48_in2 = v;
+                this->expr_48_in1_set(this->expr_48_in1);
+            }
+            
+            void numberobj_60_output_set(number v) {
+                this->expr_48_in2_set(v);
+            }
+            
+            void numberobj_60_value_set(number v) {
+                this->numberobj_60_value_setter(v);
+                v = this->numberobj_60_value;
+                number localvalue = v;
+            
+                if (this->numberobj_60_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_60_output_set(localvalue);
+            }
+            
+            void loadbang_05_output_bang() {
+                this->numberobj_62_value_bang();
+            }
+            
             template<typename LISTTYPE> void codebox_02_in3_set(const LISTTYPE& v) {
                 this->codebox_02_in3 = jsCreateListCopy(v);
             }
             
-            template<typename LISTTYPE> void scalascl_03_out_set(const LISTTYPE& v) {
-                this->scalascl_03_out = jsCreateListCopy(v);
+            template<typename LISTTYPE> void scalascl_07_out_set(const LISTTYPE& v) {
+                this->scalascl_07_out = jsCreateListCopy(v);
                 this->codebox_02_in3_set(v);
             }
             
-            void scalascl_03_trigger_bang() {
-                this->scalascl_03_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 15, 8});
+            void scalascl_07_trigger_bang() {
+                this->scalascl_07_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 6, 5, 4, 3, 3, 2, 5, 3, 7, 4});
             }
             
-            void loadbang_05_output_bang() {
-                this->scalascl_03_trigger_bang();
+            void button_08_output_bang() {
+                this->scalascl_07_trigger_bang();
             }
             
-            void button_03_output_bang() {
-                this->scalascl_03_trigger_bang();
-            }
-            
-            void button_03_bangval_bang() {
+            void button_08_bangval_bang() {
                 ;
-                this->button_03_output_bang();
+                this->button_08_output_bang();
             }
             
-            template<typename LISTTYPE> void scalascl_04_out_set(const LISTTYPE& v) {
-                this->scalascl_04_out = jsCreateListCopy(v);
+            template<typename LISTTYPE> void scalascl_08_out_set(const LISTTYPE& v) {
+                this->scalascl_08_out = jsCreateListCopy(v);
                 this->codebox_02_in3_set(v);
             }
             
-            void scalascl_04_trigger_bang() {
-                this->scalascl_04_out_set(listbase<number, 15>{7, 1, 1, 10, 9, 6, 5, 4, 3, 3, 2, 8, 5, 16, 9});
+            void scalascl_08_trigger_bang() {
+                this->scalascl_08_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 25, 18, 3, 2, 5, 3, 15, 8});
             }
             
-            void button_04_output_bang() {
-                this->scalascl_04_trigger_bang();
+            void button_09_output_bang() {
+                this->scalascl_08_trigger_bang();
             }
             
-            void button_04_bangval_bang() {
+            void button_09_bangval_bang() {
                 ;
-                this->button_04_output_bang();
+                this->button_09_output_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_09_out_set(const LISTTYPE& v) {
+                this->scalascl_09_out = jsCreateListCopy(v);
+                this->codebox_02_in3_set(v);
+            }
+            
+            void scalascl_09_trigger_bang() {
+                this->scalascl_09_out_set(listbase<number, 15>{7, 1, 1, 10, 9, 6, 5, 4, 3, 3, 2, 8, 5, 7, 4});
+            }
+            
+            void button_10_output_bang() {
+                this->scalascl_09_trigger_bang();
+            }
+            
+            void button_10_bangval_bang() {
+                ;
+                this->button_10_output_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_10_out_set(const LISTTYPE& v) {
+                this->scalascl_10_out = jsCreateListCopy(v);
+                this->codebox_02_in3_set(v);
+            }
+            
+            void scalascl_10_trigger_bang() {
+                this->scalascl_10_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 15, 8});
+            }
+            
+            void button_11_output_bang() {
+                this->scalascl_10_trigger_bang();
+            }
+            
+            void button_11_bangval_bang() {
+                ;
+                this->button_11_output_bang();
+            }
+            
+            void button_12_output_bang() {}
+            
+            void button_12_bangval_bang() {
+                ;
+                this->button_12_output_bang();
             }
             
             void gate_02_out1_bang_bang() {
-                this->button_03_bangval_bang();
+                this->button_09_bangval_bang();
             }
             
             void gate_02_out2_bang_bang() {
-                this->button_04_bangval_bang();
+                this->button_11_bangval_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_11_out_set(const LISTTYPE& v) {
+                this->scalascl_11_out = jsCreateListCopy(v);
+                this->codebox_02_in3_set(v);
+            }
+            
+            void scalascl_11_trigger_bang() {
+                this->scalascl_11_out_set(listbase<number, 15>{7, 1, 1, 9, 8, 5, 4, 4, 3, 3, 2, 5, 3, 7, 4});
+            }
+            
+            void button_13_output_bang() {
+                this->scalascl_11_trigger_bang();
+            }
+            
+            void button_13_bangval_bang() {
+                ;
+                this->button_13_output_bang();
+            }
+            
+            void gate_02_out3_bang_bang() {
+                this->button_13_bangval_bang();
+            }
+            
+            void gate_02_out4_bang_bang() {
+                this->button_08_bangval_bang();
+            }
+            
+            void gate_02_out5_bang_bang() {
+                this->button_10_bangval_bang();
+            }
+            
+            template<typename LISTTYPE> void scalascl_12_out_set(const LISTTYPE& v) {
+                this->scalascl_12_out = jsCreateListCopy(v);
+                this->codebox_02_in3_set(v);
+            }
+            
+            void scalascl_12_trigger_bang() {
+                this->scalascl_12_out_set(listbase<number, 15>{7, 1, 1, 16, 15, 6, 5, 4, 3, 3, 2, 8, 5, 7, 4});
+            }
+            
+            void button_14_output_bang() {
+                this->scalascl_12_trigger_bang();
+            }
+            
+            void button_14_bangval_bang() {
+                ;
+                this->button_14_output_bang();
+            }
+            
+            void gate_02_out6_bang_bang() {
+                this->button_14_bangval_bang();
             }
             
             void gate_02_input_bang_bang() {
@@ -50321,9 +51104,18 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->gate_02_out1_bang_bang();
                 else if (this->gate_02_onoff == 2)
                     this->gate_02_out2_bang_bang();
+                else if (this->gate_02_onoff == 3)
+                    this->gate_02_out3_bang_bang();
+                else if (this->gate_02_onoff == 4)
+                    this->gate_02_out4_bang_bang();
+                else if (this->gate_02_onoff == 5)
+                    this->gate_02_out5_bang_bang();
+                else if (this->gate_02_onoff == 6)
+                    this->gate_02_out6_bang_bang();
             }
             
             void metro_02_tickout_bang() {
+                this->button_12_bangval_bang();
                 this->gate_02_input_bang_bang();
             }
             
@@ -50383,48 +51175,103 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->stackprotect_count = __stackprotect_count;
             }
             
-            void numberobj_53_value_setter(number v) {
+            void numberobj_58_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_53_currentFormat != 6) {
+                if (this->numberobj_58_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_53_value = localvalue;
+                this->numberobj_58_value = localvalue;
             }
             
-            void numberobj_54_value_setter(number v) {
+            void numberobj_59_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_54_currentFormat != 6) {
+                if (this->numberobj_59_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_54_value = localvalue;
+                this->numberobj_59_value = localvalue;
             }
             
-            void numberobj_55_value_setter(number v) {
+            void numberobj_60_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_55_currentFormat != 6) {
+                if (this->numberobj_60_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_55_value = localvalue;
+                this->numberobj_60_value = localvalue;
             }
             
-            void numberobj_56_value_setter(number v) {
+            void numberobj_61_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_56_currentFormat != 6) {
+                if (this->numberobj_61_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_56_value = localvalue;
+                this->numberobj_61_value = localvalue;
+            }
+            
+            void numberobj_62_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_62_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_62_value = localvalue;
+            }
+            
+            void numberobj_63_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_63_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_63_value = localvalue;
+            }
+            
+            void numberobj_64_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_64_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_64_value = localvalue;
+            }
+            
+            void numberobj_65_value_setter(number v) {
+                number localvalue = v;
+            
+                if (this->numberobj_65_currentFormat != 6) {
+                    localvalue = trunc(localvalue);
+                }
+            
+                this->numberobj_65_value = localvalue;
             }
             
             void metro_02_interval_setter(number v) {
                 this->metro_02_interval = (v > 0 ? v : 0);
+            }
+            
+            void numberobj_58_init() {
+                this->numberobj_58_currentFormat = 6;
+            }
+            
+            void numberobj_58_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_58_value;
+            }
+            
+            void numberobj_58_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_58_value_set(preset["value"]);
             }
             
             number ftom_03_innerFtoM_next(number frequency, number tuning) {
@@ -50806,19 +51653,34 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->ftom_03_innerScala_update(this->ftom_03_scale, this->ftom_03_map);
             }
             
-            void numberobj_53_init() {
-                this->numberobj_53_currentFormat = 6;
+            void numberobj_59_init() {
+                this->numberobj_59_currentFormat = 6;
             }
             
-            void numberobj_53_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_53_value;
+            void numberobj_59_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_59_value;
             }
             
-            void numberobj_53_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_59_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_53_value_set(preset["value"]);
+                this->numberobj_59_value_set(preset["value"]);
+            }
+            
+            void numberobj_60_init() {
+                this->numberobj_60_currentFormat = 6;
+            }
+            
+            void numberobj_60_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_60_value;
+            }
+            
+            void numberobj_60_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_60_value_set(preset["value"]);
             }
             
             void param_12_getPresetValue(PatcherStateInterface& preset) {
@@ -50830,21 +51692,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     return;
             
                 this->param_12_value_set(preset["value"]);
-            }
-            
-            void numberobj_54_init() {
-                this->numberobj_54_currentFormat = 6;
-            }
-            
-            void numberobj_54_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_54_value;
-            }
-            
-            void numberobj_54_setPresetValue(PatcherStateInterface& preset) {
-                if ((bool)(stateIsEmpty(preset)))
-                    return;
-            
-                this->numberobj_54_value_set(preset["value"]);
             }
             
             number codebox_02_mtof_next(number midivalue, number tuning) {
@@ -50871,34 +51718,79 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->codebox_02_mtof_lastTuning = 0;
             }
             
-            void numberobj_55_init() {
-                this->numberobj_55_currentFormat = 6;
+            void numberobj_61_init() {
+                this->numberobj_61_currentFormat = 6;
             }
             
-            void numberobj_55_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_55_value;
+            void numberobj_61_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_61_value;
             }
             
-            void numberobj_55_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_61_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_55_value_set(preset["value"]);
+                this->numberobj_61_value_set(preset["value"]);
             }
             
-            void numberobj_56_init() {
-                this->numberobj_56_currentFormat = 6;
+            void numberobj_62_init() {
+                this->numberobj_62_currentFormat = 6;
             }
             
-            void numberobj_56_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_56_value;
+            void numberobj_62_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_62_value;
             }
             
-            void numberobj_56_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_62_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_56_value_set(preset["value"]);
+                this->numberobj_62_value_set(preset["value"]);
+            }
+            
+            void numberobj_63_init() {
+                this->numberobj_63_currentFormat = 6;
+            }
+            
+            void numberobj_63_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_63_value;
+            }
+            
+            void numberobj_63_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_63_value_set(preset["value"]);
+            }
+            
+            void numberobj_64_init() {
+                this->numberobj_64_currentFormat = 6;
+            }
+            
+            void numberobj_64_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_64_value;
+            }
+            
+            void numberobj_64_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_64_value_set(preset["value"]);
+            }
+            
+            void numberobj_65_init() {
+                this->numberobj_65_currentFormat = 6;
+            }
+            
+            void numberobj_65_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_65_value;
+            }
+            
+            void numberobj_65_setPresetValue(PatcherStateInterface& preset) {
+                if ((bool)(stateIsEmpty(preset)))
+                    return;
+            
+                this->numberobj_65_value_set(preset["value"]);
             }
             
             void metro_02_onTransportChanged(number ) {}
@@ -50945,33 +51837,45 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void assign_defaults()
             {
+                numberobj_58_value = 0;
+                numberobj_58_value_setter(numberobj_58_value);
                 ftom_03_base = 440;
+                numberobj_59_value = 0;
+                numberobj_59_value_setter(numberobj_59_value);
                 expr_48_in1 = 0;
                 expr_48_in2 = 0;
                 expr_48_out1 = 0;
-                numberobj_53_value = 0;
-                numberobj_53_value_setter(numberobj_53_value);
+                numberobj_60_value = 0;
+                numberobj_60_value_setter(numberobj_60_value);
                 param_12_value = 7;
-                numberobj_54_value = 0;
-                numberobj_54_value_setter(numberobj_54_value);
                 codebox_02_in1 = 0;
                 codebox_02_in2 = 0;
                 codebox_02_out1 = 0;
                 codebox_02_out2 = 0;
-                numberobj_55_value = 0;
-                numberobj_55_value_setter(numberobj_55_value);
+                numberobj_61_value = 0;
+                numberobj_61_value_setter(numberobj_61_value);
                 expr_50_in1 = 0;
                 expr_50_out1 = 0;
+                numberobj_62_value = 0;
+                numberobj_62_value_setter(numberobj_62_value);
                 expr_51_in1 = 0;
                 expr_51_in2 = 60;
                 expr_51_out1 = 0;
-                numberobj_56_value = 0;
-                numberobj_56_value_setter(numberobj_56_value);
+                numberobj_63_value = 0;
+                numberobj_63_value_setter(numberobj_63_value);
+                numberobj_64_value = 0;
+                numberobj_64_value_setter(numberobj_64_value);
                 expr_52_in1 = 0;
                 expr_52_out1 = 0;
+                numberobj_65_value = 0;
+                numberobj_65_value_setter(numberobj_65_value);
                 gate_02_onoff = 0;
                 gate_02_out1_number = 0;
                 gate_02_out2_number = 0;
+                gate_02_out3_number = 0;
+                gate_02_out4_number = 0;
+                gate_02_out5_number = 0;
+                gate_02_out6_number = 0;
                 metro_02_on = 1;
                 metro_02_interval = 200;
                 metro_02_interval_setter(metro_02_interval);
@@ -50991,6 +51895,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
+                numberobj_58_currentFormat = 6;
+                numberobj_58_lastValue = 0;
                 ftom_03_innerFtoM_lastInValue = 0;
                 ftom_03_innerFtoM_lastOutValue = 0;
                 ftom_03_innerFtoM_lastTuning = 0;
@@ -51009,18 +51915,24 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 ftom_03_innerScala_kbmOctaveDegree = 12;
                 ftom_03_innerScala_kbmMapSize = 0;
                 ftom_03_innerScala_refFreq = 261.63;
-                numberobj_53_currentFormat = 6;
-                numberobj_53_lastValue = 0;
+                numberobj_59_currentFormat = 6;
+                numberobj_59_lastValue = 0;
+                numberobj_60_currentFormat = 6;
+                numberobj_60_lastValue = 0;
                 param_12_lastValue = 0;
-                numberobj_54_currentFormat = 6;
-                numberobj_54_lastValue = 0;
                 codebox_02_mtof_lastInValue = 0;
                 codebox_02_mtof_lastOutValue = 0;
                 codebox_02_mtof_lastTuning = 0;
-                numberobj_55_currentFormat = 6;
-                numberobj_55_lastValue = 0;
-                numberobj_56_currentFormat = 6;
-                numberobj_56_lastValue = 0;
+                numberobj_61_currentFormat = 6;
+                numberobj_61_lastValue = 0;
+                numberobj_62_currentFormat = 6;
+                numberobj_62_lastValue = 0;
+                numberobj_63_currentFormat = 6;
+                numberobj_63_lastValue = 0;
+                numberobj_64_currentFormat = 6;
+                numberobj_64_lastValue = 0;
+                numberobj_65_currentFormat = 6;
+                numberobj_65_lastValue = 0;
                 metro_02_last = -1;
                 metro_02_next = -1;
                 ctlin_02_status = 0;
@@ -51035,39 +51947,55 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             // member variables
             
+                number numberobj_58_value;
                 list ftom_03_frequency;
                 list ftom_03_scale;
                 list ftom_03_map;
                 number ftom_03_base;
+                number numberobj_59_value;
                 number expr_48_in1;
                 number expr_48_in2;
                 number expr_48_out1;
-                number numberobj_53_value;
+                number numberobj_60_value;
                 number param_12_value;
-                number numberobj_54_value;
                 number codebox_02_in1;
                 number codebox_02_in2;
                 list codebox_02_in3;
                 number codebox_02_out1;
                 number codebox_02_out2;
-                number numberobj_55_value;
+                number numberobj_61_value;
                 number expr_50_in1;
                 number expr_50_out1;
+                number numberobj_62_value;
                 number expr_51_in1;
                 number expr_51_in2;
                 number expr_51_out1;
-                number numberobj_56_value;
+                number numberobj_63_value;
+                number numberobj_64_value;
+                list scalascl_07_out;
+                list scalascl_08_out;
                 number expr_52_in1;
                 number expr_52_out1;
-                list scalascl_03_out;
+                number numberobj_65_value;
                 number gate_02_onoff;
                 number gate_02_out1_number;
                 list gate_02_out1_list;
                 number gate_02_out2_number;
                 list gate_02_out2_list;
+                number gate_02_out3_number;
+                list gate_02_out3_list;
+                number gate_02_out4_number;
+                list gate_02_out4_list;
+                number gate_02_out5_number;
+                list gate_02_out5_list;
+                number gate_02_out6_number;
+                list gate_02_out6_list;
+                list scalascl_09_out;
+                list scalascl_10_out;
                 number metro_02_on;
                 number metro_02_interval;
-                list scalascl_04_out;
+                list scalascl_11_out;
+                list scalascl_12_out;
                 number ctlin_02_input;
                 number ctlin_02_controller;
                 number ctlin_02_channel;
@@ -51084,6 +52012,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
+                Int numberobj_58_currentFormat;
+                number numberobj_58_lastValue;
                 number ftom_03_innerFtoM_lastInValue;
                 number ftom_03_innerFtoM_lastOutValue;
                 number ftom_03_innerFtoM_lastTuning;
@@ -51104,19 +52034,25 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Int ftom_03_innerScala_kbmOctaveDegree;
                 Index ftom_03_innerScala_kbmMapSize;
                 number ftom_03_innerScala_refFreq;
-                Int numberobj_53_currentFormat;
-                number numberobj_53_lastValue;
+                Int numberobj_59_currentFormat;
+                number numberobj_59_lastValue;
+                Int numberobj_60_currentFormat;
+                number numberobj_60_lastValue;
                 number param_12_lastValue;
-                Int numberobj_54_currentFormat;
-                number numberobj_54_lastValue;
                 number codebox_02_mtof_lastInValue;
                 number codebox_02_mtof_lastOutValue;
                 number codebox_02_mtof_lastTuning;
                 SampleBufferRef codebox_02_mtof_buffer;
-                Int numberobj_55_currentFormat;
-                number numberobj_55_lastValue;
-                Int numberobj_56_currentFormat;
-                number numberobj_56_lastValue;
+                Int numberobj_61_currentFormat;
+                number numberobj_61_lastValue;
+                Int numberobj_62_currentFormat;
+                number numberobj_62_lastValue;
+                Int numberobj_63_currentFormat;
+                number numberobj_63_lastValue;
+                Int numberobj_64_currentFormat;
+                number numberobj_64_lastValue;
+                Int numberobj_65_currentFormat;
+                number numberobj_65_lastValue;
                 MillisecondTime metro_02_last;
                 MillisecondTime metro_02_next;
                 Int ctlin_02_status;
@@ -51130,17 +52066,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1588 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5130 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1613;
+            friend class RNBOSubpatcher_5155;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1588()
+            RNBOSubpatcher_5130()
             {}
             
-            ~RNBOSubpatcher_1588()
+            ~RNBOSubpatcher_5130()
             {
                 deallocateSignals();
             }
@@ -51168,30 +52104,30 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 const SampleValue * in1 = (numInputs >= 1 && inputs[0] ? inputs[0] : this->zeroBuffer);
                 const SampleValue * in2 = (numInputs >= 2 && inputs[1] ? inputs[1] : this->zeroBuffer);
                 const SampleValue * in3 = (numInputs >= 3 && inputs[2] ? inputs[2] : this->zeroBuffer);
-                this->dspexpr_34_perform(in2, this->dspexpr_34_in2, this->signals[0], n);
+                this->scopetilde_10_perform(in2, this->zeroBuffer, n);
+                this->welch_tilde_07_perform(in2, this->signals[0], n);
+                this->scopetilde_12_perform(this->signals[0], this->zeroBuffer, n);
+                this->dspexpr_34_perform(in2, this->dspexpr_34_in2, this->signals[1], n);
             
                 this->wrap_tilde_04_perform(
-                    this->signals[0],
+                    this->signals[1],
                     this->wrap_tilde_04_low,
                     this->wrap_tilde_04_high,
-                    this->signals[1],
+                    this->signals[2],
                     n
                 );
             
-                this->welch_tilde_08_perform(this->signals[1], this->signals[0], n);
-                this->scopetilde_11_perform(this->signals[0], this->zeroBuffer, n);
-                this->welch_tilde_07_perform(in2, this->signals[2], n);
-                this->scopetilde_12_perform(this->signals[2], this->zeroBuffer, n);
-                this->scopetilde_10_perform(in2, this->zeroBuffer, n);
-                this->dspexpr_31_perform(in2, in3, this->signals[3], n);
-                this->delaytilde_09_perform(this->signals[3], in1, this->signals[4], n);
-                this->dspexpr_30_perform(this->signals[4], this->signals[2], this->signals[5], n);
-                this->numbertilde_11_perform(this->signals[3], this->dummyBuffer, n);
-                this->dspexpr_33_perform(this->signals[1], in3, this->signals[3], n);
-                this->delaytilde_10_perform(this->signals[3], in1, this->signals[1], n);
-                this->dspexpr_32_perform(this->signals[1], this->signals[0], this->signals[2], n);
-                this->dspexpr_29_perform(this->signals[5], this->signals[2], out1, n);
+                this->welch_tilde_08_perform(this->signals[2], this->signals[1], n);
+                this->scopetilde_11_perform(this->signals[1], this->zeroBuffer, n);
+                this->dspexpr_33_perform(this->signals[2], in3, this->signals[3], n);
                 this->numbertilde_12_perform(this->signals[3], this->dummyBuffer, n);
+                this->delaytilde_10_perform(this->signals[3], in1, this->signals[2], n);
+                this->dspexpr_32_perform(this->signals[2], this->signals[1], this->signals[3], n);
+                this->dspexpr_31_perform(in2, in3, this->signals[1], n);
+                this->numbertilde_11_perform(this->signals[1], this->dummyBuffer, n);
+                this->delaytilde_09_perform(this->signals[1], in1, this->signals[2], n);
+                this->dspexpr_30_perform(this->signals[2], this->signals[0], this->signals[1], n);
+                this->dspexpr_29_perform(this->signals[1], this->signals[3], out1, n);
                 this->stackprotect_perform(n);
                 this->audioProcessSampleCount += this->vs;
             }
@@ -51202,7 +52138,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 if (this->maxvs < maxBlockSize || !this->didAllocateSignals) {
                     Index i;
             
-                    for (i = 0; i < 6; i++) {
+                    for (i = 0; i < 4; i++) {
                         this->signals[i] = resizeSignal(this->signals[i], this->maxvs, maxBlockSize);
                     }
             
@@ -51222,13 +52158,13 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                     this->invsr = 1 / sampleRate;
                 }
             
-                this->scopetilde_11_dspsetup(forceDSPSetup);
-                this->scopetilde_12_dspsetup(forceDSPSetup);
                 this->scopetilde_10_dspsetup(forceDSPSetup);
-                this->delaytilde_09_dspsetup(forceDSPSetup);
-                this->numbertilde_11_dspsetup(forceDSPSetup);
-                this->delaytilde_10_dspsetup(forceDSPSetup);
+                this->scopetilde_12_dspsetup(forceDSPSetup);
+                this->scopetilde_11_dspsetup(forceDSPSetup);
                 this->numbertilde_12_dspsetup(forceDSPSetup);
+                this->delaytilde_10_dspsetup(forceDSPSetup);
+                this->numbertilde_11_dspsetup(forceDSPSetup);
+                this->delaytilde_09_dspsetup(forceDSPSetup);
             
                 if (sampleRateChanged)
                     this->onSampleRateChanged(sampleRate);
@@ -51521,14 +52457,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1588* operator->() {
+            RNBOSubpatcher_5130* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1588* operator->() const {
+            const RNBOSubpatcher_5130* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1613* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1613 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5155* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5155 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -51537,8 +52473,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
             void cancelClockEvents()
             {
-                getEngine()->flushClockEvents(this, 2098551528, false);
                 getEngine()->flushClockEvents(this, -1494586265, false);
+                getEngine()->flushClockEvents(this, 2098551528, false);
             }
             
             inline number linearinterp(number frac, number x, number y) {
@@ -51662,14 +52598,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
-            void numbertilde_11_value_set(number ) {}
-            
             void numbertilde_12_value_set(number ) {}
+            
+            void numbertilde_11_value_set(number ) {}
             
             void deallocateSignals() {
                 Index i;
             
-                for (i = 0; i < 6; i++) {
+                for (i = 0; i < 4; i++) {
                     this->signals[i] = freeSignal(this->signals[i]);
                 }
             
@@ -51724,14 +52660,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->updateTime(time, (ENGINE*)nullptr);
             
                 switch (index) {
-                case 2098551528:
-                    {
-                    this->numbertilde_11_value_set(value);
-                    break;
-                    }
                 case -1494586265:
                     {
                     this->numbertilde_12_value_set(value);
+                    break;
+                    }
+                case 2098551528:
+                    {
+                    this->numbertilde_11_value_set(value);
                     break;
                     }
                 }
@@ -51779,6 +52715,125 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             
                     this->getEngine()->sendDataRefUpdated(2);
                 }
+            }
+            
+            void scopetilde_10_perform(const SampleValue * x, const SampleValue * y, Index n) {
+                auto __scopetilde_10_ysign = this->scopetilde_10_ysign;
+                auto __scopetilde_10_ymonitorvalue = this->scopetilde_10_ymonitorvalue;
+                auto __scopetilde_10_xsign = this->scopetilde_10_xsign;
+                auto __scopetilde_10_xmonitorvalue = this->scopetilde_10_xmonitorvalue;
+                auto __scopetilde_10_mode = this->scopetilde_10_mode;
+            
+                for (Index i = 0; i < n; i++) {
+                    number xval = x[(Index)i];
+                    number yval = y[(Index)i];
+            
+                    if (__scopetilde_10_mode == 1) {
+                        number xabsval = rnbo_abs(xval);
+            
+                        if (xabsval > __scopetilde_10_xmonitorvalue) {
+                            __scopetilde_10_xmonitorvalue = xabsval;
+                            __scopetilde_10_xsign = (xval < 0 ? -1 : 1);
+                        }
+            
+                        number yabsval = rnbo_abs(yval);
+            
+                        if (yabsval > __scopetilde_10_ymonitorvalue) {
+                            __scopetilde_10_ymonitorvalue = yabsval;
+                            __scopetilde_10_ysign = (yval < 0 ? -1 : 1);
+                        }
+                    } else {
+                        __scopetilde_10_xmonitorvalue = xval;
+                        __scopetilde_10_xsign = 1;
+                        __scopetilde_10_ymonitorvalue = yval;
+                        __scopetilde_10_ysign = 1;
+                    }
+            
+                    this->scopetilde_10_effectiveCount--;
+            
+                    if (this->scopetilde_10_effectiveCount <= 0) {
+                        this->scopetilde_10_updateEffectiveCount();
+                        this->scopetilde_10_monitorbuffer->push(__scopetilde_10_xmonitorvalue * __scopetilde_10_xsign);
+            
+                        if (__scopetilde_10_mode == 1)
+                            __scopetilde_10_xmonitorvalue = 0;
+            
+                        if (this->scopetilde_10_monitorbuffer->length >= 128 * (1 + 0)) {
+                            ;
+                            this->scopetilde_10_monitorbuffer->length = 0;
+                        }
+                    }
+                }
+            
+                this->scopetilde_10_xmonitorvalue = __scopetilde_10_xmonitorvalue;
+                this->scopetilde_10_xsign = __scopetilde_10_xsign;
+                this->scopetilde_10_ymonitorvalue = __scopetilde_10_ymonitorvalue;
+                this->scopetilde_10_ysign = __scopetilde_10_ysign;
+            }
+            
+            void welch_tilde_07_perform(const Sample * x, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    number __x = x[(Index)i];
+                    __x = (__x > 1 ? 1 : (__x < 0 ? 0 : __x));
+                    number w = (__x - 0.5) * 2;
+                    out1[(Index)i] = 1 - w * w;
+                }
+            }
+            
+            void scopetilde_12_perform(const SampleValue * x, const SampleValue * y, Index n) {
+                auto __scopetilde_12_ysign = this->scopetilde_12_ysign;
+                auto __scopetilde_12_ymonitorvalue = this->scopetilde_12_ymonitorvalue;
+                auto __scopetilde_12_xsign = this->scopetilde_12_xsign;
+                auto __scopetilde_12_xmonitorvalue = this->scopetilde_12_xmonitorvalue;
+                auto __scopetilde_12_mode = this->scopetilde_12_mode;
+            
+                for (Index i = 0; i < n; i++) {
+                    number xval = x[(Index)i];
+                    number yval = y[(Index)i];
+            
+                    if (__scopetilde_12_mode == 1) {
+                        number xabsval = rnbo_abs(xval);
+            
+                        if (xabsval > __scopetilde_12_xmonitorvalue) {
+                            __scopetilde_12_xmonitorvalue = xabsval;
+                            __scopetilde_12_xsign = (xval < 0 ? -1 : 1);
+                        }
+            
+                        number yabsval = rnbo_abs(yval);
+            
+                        if (yabsval > __scopetilde_12_ymonitorvalue) {
+                            __scopetilde_12_ymonitorvalue = yabsval;
+                            __scopetilde_12_ysign = (yval < 0 ? -1 : 1);
+                        }
+                    } else {
+                        __scopetilde_12_xmonitorvalue = xval;
+                        __scopetilde_12_xsign = 1;
+                        __scopetilde_12_ymonitorvalue = yval;
+                        __scopetilde_12_ysign = 1;
+                    }
+            
+                    this->scopetilde_12_effectiveCount--;
+            
+                    if (this->scopetilde_12_effectiveCount <= 0) {
+                        this->scopetilde_12_updateEffectiveCount();
+                        this->scopetilde_12_monitorbuffer->push(__scopetilde_12_xmonitorvalue * __scopetilde_12_xsign);
+            
+                        if (__scopetilde_12_mode == 1)
+                            __scopetilde_12_xmonitorvalue = 0;
+            
+                        if (this->scopetilde_12_monitorbuffer->length >= 128 * (1 + 0)) {
+                            ;
+                            this->scopetilde_12_monitorbuffer->length = 0;
+                        }
+                    }
+                }
+            
+                this->scopetilde_12_xmonitorvalue = __scopetilde_12_xmonitorvalue;
+                this->scopetilde_12_xsign = __scopetilde_12_xsign;
+                this->scopetilde_12_ymonitorvalue = __scopetilde_12_ymonitorvalue;
+                this->scopetilde_12_ysign = __scopetilde_12_ysign;
             }
             
             void dspexpr_34_perform(const Sample * in1, number in2, SampleValue * out1, Index n) {
@@ -51891,231 +52946,53 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 this->scopetilde_11_ysign = __scopetilde_11_ysign;
             }
             
-            void welch_tilde_07_perform(const Sample * x, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    number __x = x[(Index)i];
-                    __x = (__x > 1 ? 1 : (__x < 0 ? 0 : __x));
-                    number w = (__x - 0.5) * 2;
-                    out1[(Index)i] = 1 - w * w;
-                }
-            }
-            
-            void scopetilde_12_perform(const SampleValue * x, const SampleValue * y, Index n) {
-                auto __scopetilde_12_ysign = this->scopetilde_12_ysign;
-                auto __scopetilde_12_ymonitorvalue = this->scopetilde_12_ymonitorvalue;
-                auto __scopetilde_12_xsign = this->scopetilde_12_xsign;
-                auto __scopetilde_12_xmonitorvalue = this->scopetilde_12_xmonitorvalue;
-                auto __scopetilde_12_mode = this->scopetilde_12_mode;
-            
-                for (Index i = 0; i < n; i++) {
-                    number xval = x[(Index)i];
-                    number yval = y[(Index)i];
-            
-                    if (__scopetilde_12_mode == 1) {
-                        number xabsval = rnbo_abs(xval);
-            
-                        if (xabsval > __scopetilde_12_xmonitorvalue) {
-                            __scopetilde_12_xmonitorvalue = xabsval;
-                            __scopetilde_12_xsign = (xval < 0 ? -1 : 1);
-                        }
-            
-                        number yabsval = rnbo_abs(yval);
-            
-                        if (yabsval > __scopetilde_12_ymonitorvalue) {
-                            __scopetilde_12_ymonitorvalue = yabsval;
-                            __scopetilde_12_ysign = (yval < 0 ? -1 : 1);
-                        }
-                    } else {
-                        __scopetilde_12_xmonitorvalue = xval;
-                        __scopetilde_12_xsign = 1;
-                        __scopetilde_12_ymonitorvalue = yval;
-                        __scopetilde_12_ysign = 1;
-                    }
-            
-                    this->scopetilde_12_effectiveCount--;
-            
-                    if (this->scopetilde_12_effectiveCount <= 0) {
-                        this->scopetilde_12_updateEffectiveCount();
-                        this->scopetilde_12_monitorbuffer->push(__scopetilde_12_xmonitorvalue * __scopetilde_12_xsign);
-            
-                        if (__scopetilde_12_mode == 1)
-                            __scopetilde_12_xmonitorvalue = 0;
-            
-                        if (this->scopetilde_12_monitorbuffer->length >= 128 * (1 + 0)) {
-                            ;
-                            this->scopetilde_12_monitorbuffer->length = 0;
-                        }
-                    }
-                }
-            
-                this->scopetilde_12_xmonitorvalue = __scopetilde_12_xmonitorvalue;
-                this->scopetilde_12_xsign = __scopetilde_12_xsign;
-                this->scopetilde_12_ymonitorvalue = __scopetilde_12_ymonitorvalue;
-                this->scopetilde_12_ysign = __scopetilde_12_ysign;
-            }
-            
-            void scopetilde_10_perform(const SampleValue * x, const SampleValue * y, Index n) {
-                auto __scopetilde_10_ysign = this->scopetilde_10_ysign;
-                auto __scopetilde_10_ymonitorvalue = this->scopetilde_10_ymonitorvalue;
-                auto __scopetilde_10_xsign = this->scopetilde_10_xsign;
-                auto __scopetilde_10_xmonitorvalue = this->scopetilde_10_xmonitorvalue;
-                auto __scopetilde_10_mode = this->scopetilde_10_mode;
-            
-                for (Index i = 0; i < n; i++) {
-                    number xval = x[(Index)i];
-                    number yval = y[(Index)i];
-            
-                    if (__scopetilde_10_mode == 1) {
-                        number xabsval = rnbo_abs(xval);
-            
-                        if (xabsval > __scopetilde_10_xmonitorvalue) {
-                            __scopetilde_10_xmonitorvalue = xabsval;
-                            __scopetilde_10_xsign = (xval < 0 ? -1 : 1);
-                        }
-            
-                        number yabsval = rnbo_abs(yval);
-            
-                        if (yabsval > __scopetilde_10_ymonitorvalue) {
-                            __scopetilde_10_ymonitorvalue = yabsval;
-                            __scopetilde_10_ysign = (yval < 0 ? -1 : 1);
-                        }
-                    } else {
-                        __scopetilde_10_xmonitorvalue = xval;
-                        __scopetilde_10_xsign = 1;
-                        __scopetilde_10_ymonitorvalue = yval;
-                        __scopetilde_10_ysign = 1;
-                    }
-            
-                    this->scopetilde_10_effectiveCount--;
-            
-                    if (this->scopetilde_10_effectiveCount <= 0) {
-                        this->scopetilde_10_updateEffectiveCount();
-                        this->scopetilde_10_monitorbuffer->push(__scopetilde_10_xmonitorvalue * __scopetilde_10_xsign);
-            
-                        if (__scopetilde_10_mode == 1)
-                            __scopetilde_10_xmonitorvalue = 0;
-            
-                        if (this->scopetilde_10_monitorbuffer->length >= 128 * (1 + 0)) {
-                            ;
-                            this->scopetilde_10_monitorbuffer->length = 0;
-                        }
-                    }
-                }
-            
-                this->scopetilde_10_xmonitorvalue = __scopetilde_10_xmonitorvalue;
-                this->scopetilde_10_xsign = __scopetilde_10_xsign;
-                this->scopetilde_10_ymonitorvalue = __scopetilde_10_ymonitorvalue;
-                this->scopetilde_10_ysign = __scopetilde_10_ysign;
-            }
-            
-            void dspexpr_31_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
-                }
-            }
-            
-            void delaytilde_09_perform(
-                const Sample * delay,
-                const SampleValue * input,
-                SampleValue * output,
-                Index n
-            ) {
-                auto __delaytilde_09_crossfadeDelay = this->delaytilde_09_crossfadeDelay;
-                auto __delaytilde_09_rampInSamples = this->delaytilde_09_rampInSamples;
-                auto __delaytilde_09_ramp = this->delaytilde_09_ramp;
-                auto __delaytilde_09_lastDelay = this->delaytilde_09_lastDelay;
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__delaytilde_09_lastDelay == -1) {
-                        __delaytilde_09_lastDelay = delay[(Index)i];
-                    }
-            
-                    if (__delaytilde_09_ramp > 0) {
-                        number factor = __delaytilde_09_ramp / __delaytilde_09_rampInSamples;
-                        output[(Index)i] = this->delaytilde_09_del_read(__delaytilde_09_crossfadeDelay, 0) * factor + this->delaytilde_09_del_read(__delaytilde_09_lastDelay, 0) * (1. - factor);
-                        __delaytilde_09_ramp--;
-                    } else {
-                        number effectiveDelay = delay[(Index)i];
-            
-                        if (effectiveDelay != __delaytilde_09_lastDelay) {
-                            __delaytilde_09_ramp = __delaytilde_09_rampInSamples;
-                            __delaytilde_09_crossfadeDelay = __delaytilde_09_lastDelay;
-                            __delaytilde_09_lastDelay = effectiveDelay;
-                            output[(Index)i] = this->delaytilde_09_del_read(__delaytilde_09_crossfadeDelay, 0);
-                            __delaytilde_09_ramp--;
-                        } else {
-                            output[(Index)i] = this->delaytilde_09_del_read(effectiveDelay, 0);
-                        }
-                    }
-            
-                    this->delaytilde_09_del_write(input[(Index)i]);
-                    this->delaytilde_09_del_step();
-                }
-            
-                this->delaytilde_09_lastDelay = __delaytilde_09_lastDelay;
-                this->delaytilde_09_ramp = __delaytilde_09_ramp;
-                this->delaytilde_09_crossfadeDelay = __delaytilde_09_crossfadeDelay;
-            }
-            
-            void dspexpr_30_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
-                Index i;
-            
-                for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
-                }
-            }
-            
-            void numbertilde_11_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_11_currentIntervalInSamples = this->numbertilde_11_currentIntervalInSamples;
-                auto __numbertilde_11_lastValue = this->numbertilde_11_lastValue;
-                auto __numbertilde_11_currentInterval = this->numbertilde_11_currentInterval;
-                auto __numbertilde_11_rampInSamples = this->numbertilde_11_rampInSamples;
-                auto __numbertilde_11_outValue = this->numbertilde_11_outValue;
-                auto __numbertilde_11_currentMode = this->numbertilde_11_currentMode;
-                number monitorvalue = input_signal[0];
-            
-                for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_11_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_11_smooth_next(
-                            __numbertilde_11_outValue,
-                            __numbertilde_11_rampInSamples,
-                            __numbertilde_11_rampInSamples
-                        );
-                    } else {
-                        output[(Index)i] = input_signal[(Index)i];
-                    }
-                }
-            
-                __numbertilde_11_currentInterval -= n;
-            
-                if (monitorvalue != __numbertilde_11_lastValue && __numbertilde_11_currentInterval <= 0) {
-                    __numbertilde_11_currentInterval = __numbertilde_11_currentIntervalInSamples;
-            
-                    this->getEngine()->scheduleClockEventWithValue(
-                        this,
-                        2098551528,
-                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
-                        monitorvalue
-                    );;
-            
-                    __numbertilde_11_lastValue = monitorvalue;
-                    ;
-                }
-            
-                this->numbertilde_11_currentInterval = __numbertilde_11_currentInterval;
-                this->numbertilde_11_lastValue = __numbertilde_11_lastValue;
-            }
-            
             void dspexpr_33_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
                 Index i;
             
                 for (i = 0; i < (Index)n; i++) {
                     out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
                 }
+            }
+            
+            void numbertilde_12_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_12_currentIntervalInSamples = this->numbertilde_12_currentIntervalInSamples;
+                auto __numbertilde_12_lastValue = this->numbertilde_12_lastValue;
+                auto __numbertilde_12_currentInterval = this->numbertilde_12_currentInterval;
+                auto __numbertilde_12_rampInSamples = this->numbertilde_12_rampInSamples;
+                auto __numbertilde_12_outValue = this->numbertilde_12_outValue;
+                auto __numbertilde_12_currentMode = this->numbertilde_12_currentMode;
+                number monitorvalue = input_signal[0];
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__numbertilde_12_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_12_smooth_next(
+                            __numbertilde_12_outValue,
+                            __numbertilde_12_rampInSamples,
+                            __numbertilde_12_rampInSamples
+                        );
+                    } else {
+                        output[(Index)i] = input_signal[(Index)i];
+                    }
+                }
+            
+                __numbertilde_12_currentInterval -= n;
+            
+                if (monitorvalue != __numbertilde_12_lastValue && __numbertilde_12_currentInterval <= 0) {
+                    __numbertilde_12_currentInterval = __numbertilde_12_currentIntervalInSamples;
+            
+                    this->getEngine()->scheduleClockEventWithValue(
+                        this,
+                        -1494586265,
+                        this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
+                        monitorvalue
+                    );;
+            
+                    __numbertilde_12_lastValue = monitorvalue;
+                    ;
+                }
+            
+                this->numbertilde_12_currentInterval = __numbertilde_12_currentInterval;
+                this->numbertilde_12_lastValue = __numbertilde_12_lastValue;
             }
             
             void delaytilde_10_perform(
@@ -52169,53 +53046,112 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 }
             }
             
-            void dspexpr_29_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+            void dspexpr_31_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
                 Index i;
             
                 for (i = 0; i < (Index)n; i++) {
-                    out1[(Index)i] = in1[(Index)i] + in2[(Index)i];//#map:_###_obj_###_:1
+                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
                 }
             }
             
-            void numbertilde_12_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
-                auto __numbertilde_12_currentIntervalInSamples = this->numbertilde_12_currentIntervalInSamples;
-                auto __numbertilde_12_lastValue = this->numbertilde_12_lastValue;
-                auto __numbertilde_12_currentInterval = this->numbertilde_12_currentInterval;
-                auto __numbertilde_12_rampInSamples = this->numbertilde_12_rampInSamples;
-                auto __numbertilde_12_outValue = this->numbertilde_12_outValue;
-                auto __numbertilde_12_currentMode = this->numbertilde_12_currentMode;
+            void numbertilde_11_perform(const SampleValue * input_signal, SampleValue * output, Index n) {
+                auto __numbertilde_11_currentIntervalInSamples = this->numbertilde_11_currentIntervalInSamples;
+                auto __numbertilde_11_lastValue = this->numbertilde_11_lastValue;
+                auto __numbertilde_11_currentInterval = this->numbertilde_11_currentInterval;
+                auto __numbertilde_11_rampInSamples = this->numbertilde_11_rampInSamples;
+                auto __numbertilde_11_outValue = this->numbertilde_11_outValue;
+                auto __numbertilde_11_currentMode = this->numbertilde_11_currentMode;
                 number monitorvalue = input_signal[0];
             
                 for (Index i = 0; i < n; i++) {
-                    if (__numbertilde_12_currentMode == 0) {
-                        output[(Index)i] = this->numbertilde_12_smooth_next(
-                            __numbertilde_12_outValue,
-                            __numbertilde_12_rampInSamples,
-                            __numbertilde_12_rampInSamples
+                    if (__numbertilde_11_currentMode == 0) {
+                        output[(Index)i] = this->numbertilde_11_smooth_next(
+                            __numbertilde_11_outValue,
+                            __numbertilde_11_rampInSamples,
+                            __numbertilde_11_rampInSamples
                         );
                     } else {
                         output[(Index)i] = input_signal[(Index)i];
                     }
                 }
             
-                __numbertilde_12_currentInterval -= n;
+                __numbertilde_11_currentInterval -= n;
             
-                if (monitorvalue != __numbertilde_12_lastValue && __numbertilde_12_currentInterval <= 0) {
-                    __numbertilde_12_currentInterval = __numbertilde_12_currentIntervalInSamples;
+                if (monitorvalue != __numbertilde_11_lastValue && __numbertilde_11_currentInterval <= 0) {
+                    __numbertilde_11_currentInterval = __numbertilde_11_currentIntervalInSamples;
             
                     this->getEngine()->scheduleClockEventWithValue(
                         this,
-                        -1494586265,
+                        2098551528,
                         this->sampsToMs((SampleIndex)(this->vs)) + this->_currentTime,
                         monitorvalue
                     );;
             
-                    __numbertilde_12_lastValue = monitorvalue;
+                    __numbertilde_11_lastValue = monitorvalue;
                     ;
                 }
             
-                this->numbertilde_12_currentInterval = __numbertilde_12_currentInterval;
-                this->numbertilde_12_lastValue = __numbertilde_12_lastValue;
+                this->numbertilde_11_currentInterval = __numbertilde_11_currentInterval;
+                this->numbertilde_11_lastValue = __numbertilde_11_lastValue;
+            }
+            
+            void delaytilde_09_perform(
+                const Sample * delay,
+                const SampleValue * input,
+                SampleValue * output,
+                Index n
+            ) {
+                auto __delaytilde_09_crossfadeDelay = this->delaytilde_09_crossfadeDelay;
+                auto __delaytilde_09_rampInSamples = this->delaytilde_09_rampInSamples;
+                auto __delaytilde_09_ramp = this->delaytilde_09_ramp;
+                auto __delaytilde_09_lastDelay = this->delaytilde_09_lastDelay;
+            
+                for (Index i = 0; i < n; i++) {
+                    if (__delaytilde_09_lastDelay == -1) {
+                        __delaytilde_09_lastDelay = delay[(Index)i];
+                    }
+            
+                    if (__delaytilde_09_ramp > 0) {
+                        number factor = __delaytilde_09_ramp / __delaytilde_09_rampInSamples;
+                        output[(Index)i] = this->delaytilde_09_del_read(__delaytilde_09_crossfadeDelay, 0) * factor + this->delaytilde_09_del_read(__delaytilde_09_lastDelay, 0) * (1. - factor);
+                        __delaytilde_09_ramp--;
+                    } else {
+                        number effectiveDelay = delay[(Index)i];
+            
+                        if (effectiveDelay != __delaytilde_09_lastDelay) {
+                            __delaytilde_09_ramp = __delaytilde_09_rampInSamples;
+                            __delaytilde_09_crossfadeDelay = __delaytilde_09_lastDelay;
+                            __delaytilde_09_lastDelay = effectiveDelay;
+                            output[(Index)i] = this->delaytilde_09_del_read(__delaytilde_09_crossfadeDelay, 0);
+                            __delaytilde_09_ramp--;
+                        } else {
+                            output[(Index)i] = this->delaytilde_09_del_read(effectiveDelay, 0);
+                        }
+                    }
+            
+                    this->delaytilde_09_del_write(input[(Index)i]);
+                    this->delaytilde_09_del_step();
+                }
+            
+                this->delaytilde_09_lastDelay = __delaytilde_09_lastDelay;
+                this->delaytilde_09_ramp = __delaytilde_09_ramp;
+                this->delaytilde_09_crossfadeDelay = __delaytilde_09_crossfadeDelay;
+            }
+            
+            void dspexpr_30_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out1[(Index)i] = in1[(Index)i] * in2[(Index)i];//#map:_###_obj_###_:1
+                }
+            }
+            
+            void dspexpr_29_perform(const Sample * in1, const Sample * in2, SampleValue * out1, Index n) {
+                Index i;
+            
+                for (i = 0; i < (Index)n; i++) {
+                    out1[(Index)i] = in1[(Index)i] + in2[(Index)i];//#map:_###_obj_###_:1
+                }
             }
             
             void stackprotect_perform(Index n) {
@@ -52929,8 +53865,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 signals[1] = nullptr;
                 signals[2] = nullptr;
                 signals[3] = nullptr;
-                signals[4] = nullptr;
-                signals[5] = nullptr;
                 didAllocateSignals = 0;
                 vs = 0;
                 maxvs = 0;
@@ -53047,7 +53981,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
                 Index sampleOffsetIntoNextAudioBuffer;
                 signal zeroBuffer;
                 signal dummyBuffer;
-                SampleValue * signals[6];
+                SampleValue * signals[4];
                 bool didAllocateSignals;
                 Index vs;
                 Index maxvs;
@@ -53140,10 +54074,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1613* operator->() {
+    RNBOSubpatcher_5155* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1613* operator->() const {
+    const RNBOSubpatcher_5155* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -53225,12 +54159,12 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         return this->_currentTime;
     }
     
-    void numberobj_57_valin_set(number v) {
-        this->numberobj_57_value_set(v);
+    void numberobj_66_valin_set(number v) {
+        this->numberobj_66_value_set(v);
     }
     
-    void numberobj_57_format_set(number v) {
-        this->numberobj_57_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_66_format_set(number v) {
+        this->numberobj_66_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
     void eventinlet_54_out1_bang_bang() {
@@ -53252,28 +54186,28 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->ftom_04_frequency_set(v);
     }
     
-    void numberobj_58_valin_set(number v) {
-        this->numberobj_58_value_set(v);
+    void numberobj_67_valin_set(number v) {
+        this->numberobj_67_value_set(v);
     }
     
-    void numberobj_58_format_set(number v) {
-        this->numberobj_58_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_67_format_set(number v) {
+        this->numberobj_67_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_59_valin_set(number v) {
-        this->numberobj_59_value_set(v);
+    void numberobj_68_valin_set(number v) {
+        this->numberobj_68_value_set(v);
     }
     
-    void numberobj_59_format_set(number v) {
-        this->numberobj_59_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_68_format_set(number v) {
+        this->numberobj_68_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_60_valin_set(number v) {
-        this->numberobj_60_value_set(v);
+    void numberobj_69_valin_set(number v) {
+        this->numberobj_69_value_set(v);
     }
     
-    void numberobj_60_format_set(number v) {
-        this->numberobj_60_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_69_format_set(number v) {
+        this->numberobj_69_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
     void eventinlet_55_out1_bang_bang() {
@@ -53288,28 +54222,28 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->loadbang_06_output_bang();
     }
     
-    void numberobj_61_valin_set(number v) {
-        this->numberobj_61_value_set(v);
+    void numberobj_70_valin_set(number v) {
+        this->numberobj_70_value_set(v);
     }
     
-    void numberobj_61_format_set(number v) {
-        this->numberobj_61_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_70_format_set(number v) {
+        this->numberobj_70_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_62_valin_set(number v) {
-        this->numberobj_62_value_set(v);
+    void numberobj_71_valin_set(number v) {
+        this->numberobj_71_value_set(v);
     }
     
-    void numberobj_62_format_set(number v) {
-        this->numberobj_62_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_71_format_set(number v) {
+        this->numberobj_71_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_63_valin_set(number v) {
-        this->numberobj_63_value_set(v);
+    void numberobj_72_valin_set(number v) {
+        this->numberobj_72_value_set(v);
     }
     
-    void numberobj_63_format_set(number v) {
-        this->numberobj_63_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_72_format_set(number v) {
+        this->numberobj_72_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
     void eventinlet_56_out1_bang_bang() {
@@ -53353,15 +54287,15 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
     void setProbingTarget(MessageTag ) {}
     
     void initializeObjects() {
-        this->numberobj_57_init();
+        this->numberobj_66_init();
         this->ftom_04_innerScala_init();
         this->ftom_04_init();
-        this->numberobj_58_init();
-        this->numberobj_59_init();
-        this->numberobj_60_init();
-        this->numberobj_61_init();
-        this->numberobj_62_init();
-        this->numberobj_63_init();
+        this->numberobj_67_init();
+        this->numberobj_68_init();
+        this->numberobj_69_init();
+        this->numberobj_70_init();
+        this->numberobj_71_init();
+        this->numberobj_72_init();
         this->p_25->initializeObjects();
         this->p_26->initializeObjects();
         this->p_27->initializeObjects();
@@ -53528,21 +54462,21 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->xfade_tilde_35_pos = v;
     }
     
-    void numberobj_57_output_set(number v) {
+    void numberobj_66_output_set(number v) {
         this->xfade_tilde_36_pos_set(v);
         this->xfade_tilde_35_pos_set(v);
     }
     
-    void numberobj_57_value_set(number v) {
-        this->numberobj_57_value_setter(v);
-        v = this->numberobj_57_value;
+    void numberobj_66_value_set(number v) {
+        this->numberobj_66_value_setter(v);
+        v = this->numberobj_66_value;
         number localvalue = v;
     
-        if (this->numberobj_57_currentFormat != 6) {
+        if (this->numberobj_66_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_57_output_set(localvalue);
+        this->numberobj_66_output_set(localvalue);
     }
     
     void linetilde_07_time_set(number v) {
@@ -53615,27 +54549,27 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_61_output_set(number v) {
+    void numberobj_70_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_07_segments_set(converted);
         }
     }
     
-    void numberobj_61_value_set(number v) {
-        this->numberobj_61_value_setter(v);
-        v = this->numberobj_61_value;
+    void numberobj_70_value_set(number v) {
+        this->numberobj_70_value_setter(v);
+        v = this->numberobj_70_value;
         number localvalue = v;
     
-        if (this->numberobj_61_currentFormat != 6) {
+        if (this->numberobj_70_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_61_output_set(localvalue);
+        this->numberobj_70_output_set(localvalue);
     }
     
     void p_27_out2_number_set(number v) {
-        this->numberobj_61_value_set(v);
+        this->numberobj_70_value_set(v);
     }
     
     void linetilde_06_time_set(number v) {
@@ -53708,27 +54642,27 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_59_output_set(number v) {
+    void numberobj_68_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_06_segments_set(converted);
         }
     }
     
-    void numberobj_59_value_set(number v) {
-        this->numberobj_59_value_setter(v);
-        v = this->numberobj_59_value;
+    void numberobj_68_value_set(number v) {
+        this->numberobj_68_value_setter(v);
+        v = this->numberobj_68_value;
         number localvalue = v;
     
-        if (this->numberobj_59_currentFormat != 6) {
+        if (this->numberobj_68_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_59_output_set(localvalue);
+        this->numberobj_68_output_set(localvalue);
     }
     
     void p_27_out1_number_set(number v) {
-        this->numberobj_59_value_set(v);
+        this->numberobj_68_value_set(v);
     }
     
     void p_27_in1_number_set(number v) {
@@ -53736,13 +54670,13 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->p_27->eventinlet_48_out1_number_set(v);
     }
     
-    void numberobj_58_output_set(number v) {
+    void numberobj_67_output_set(number v) {
         this->p_27_in1_number_set(v);
     }
     
-    void numberobj_58_value_set(number v) {
-        this->numberobj_58_value_setter(v);
-        v = this->numberobj_58_value;
+    void numberobj_67_value_set(number v) {
+        this->numberobj_67_value_setter(v);
+        v = this->numberobj_67_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -24) {
@@ -53753,16 +54687,16 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 24;
         }
     
-        if (this->numberobj_58_currentFormat != 6) {
+        if (this->numberobj_67_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_58_output_set(localvalue);
+        this->numberobj_67_output_set(localvalue);
     }
     
     void expr_53_out1_set(number v) {
         this->expr_53_out1 = v;
-        this->numberobj_58_value_set(this->expr_53_out1);
+        this->numberobj_67_value_set(this->expr_53_out1);
     }
     
     void expr_53_in1_set(number in1) {
@@ -53840,13 +54774,13 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->p_27->eventinlet_49_out1_number_set(v);
     }
     
-    void numberobj_60_output_set(number v) {
+    void numberobj_69_output_set(number v) {
         this->p_27_in2_number_set(v);
     }
     
-    void numberobj_60_value_set(number v) {
-        this->numberobj_60_value_setter(v);
-        v = this->numberobj_60_value;
+    void numberobj_69_value_set(number v) {
+        this->numberobj_69_value_setter(v);
+        v = this->numberobj_69_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -100) {
@@ -53857,11 +54791,11 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 100;
         }
     
-        if (this->numberobj_60_currentFormat != 6) {
+        if (this->numberobj_69_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_60_output_set(localvalue);
+        this->numberobj_69_output_set(localvalue);
     }
     
     void p_29_in2_bang_bang() {
@@ -53944,27 +54878,27 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         }
     }
     
-    void numberobj_62_output_set(number v) {
+    void numberobj_71_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->linetilde_08_segments_set(converted);
         }
     }
     
-    void numberobj_62_value_set(number v) {
-        this->numberobj_62_value_setter(v);
-        v = this->numberobj_62_value;
+    void numberobj_71_value_set(number v) {
+        this->numberobj_71_value_setter(v);
+        v = this->numberobj_71_value;
         number localvalue = v;
     
-        if (this->numberobj_62_currentFormat != 6) {
+        if (this->numberobj_71_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_62_output_set(localvalue);
+        this->numberobj_71_output_set(localvalue);
     }
     
     void mstosamps_03_out1_set(number v) {
-        this->numberobj_62_value_set(v);
+        this->numberobj_71_value_set(v);
     }
     
     void mstosamps_03_ms_set(number ms) {
@@ -53981,14 +54915,14 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->p_27->eventinlet_50_out1_number_set(v);
     }
     
-    void numberobj_63_output_set(number v) {
+    void numberobj_72_output_set(number v) {
         this->mstosamps_03_ms_set(v);
         this->p_27_in3_number_set(v);
     }
     
-    void numberobj_63_value_set(number v) {
-        this->numberobj_63_value_setter(v);
-        v = this->numberobj_63_value;
+    void numberobj_72_value_set(number v) {
+        this->numberobj_72_value_setter(v);
+        v = this->numberobj_72_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 2) {
@@ -53999,15 +54933,15 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 200;
         }
     
-        if (this->numberobj_63_currentFormat != 6) {
+        if (this->numberobj_72_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_63_output_set(localvalue);
+        this->numberobj_72_output_set(localvalue);
     }
     
     void floatnum_04_out_set(number v) {
-        this->numberobj_63_value_set(v);
+        this->numberobj_72_value_set(v);
     }
     
     void floatnum_04_input_bang_bang() {
@@ -54295,20 +55229,6 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->linetilde_08_time = __linetilde_08_time;
     }
     
-    void p_30_perform(
-        const SampleValue * in1,
-        const SampleValue * in2,
-        const SampleValue * in3,
-        SampleValue * out1,
-        Index n
-    ) {
-        // subpatcher: PitchShift~
-        ConstSampleArray<3> ins = {in1, in2, in3};
-    
-        SampleArray<1> outs = {out1};
-        this->p_30->process(ins, 3, outs, 1, n);
-    }
-    
     void p_28_perform(
         const SampleValue * in1,
         const SampleValue * in2,
@@ -54321,6 +55241,20 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
     
         SampleArray<1> outs = {out1};
         this->p_28->process(ins, 3, outs, 1, n);
+    }
+    
+    void p_30_perform(
+        const SampleValue * in1,
+        const SampleValue * in2,
+        const SampleValue * in3,
+        SampleValue * out1,
+        Index n
+    ) {
+        // subpatcher: PitchShift~
+        ConstSampleArray<3> ins = {in1, in2, in3};
+    
+        SampleArray<1> outs = {out1};
+        this->p_30->process(ins, 3, outs, 1, n);
     }
     
     void p_26_perform(
@@ -54363,17 +55297,17 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->stackprotect_count = __stackprotect_count;
     }
     
-    void numberobj_57_value_setter(number v) {
+    void numberobj_66_value_setter(number v) {
         number localvalue = v;
     
-        if (this->numberobj_57_currentFormat != 6) {
+        if (this->numberobj_66_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_57_value = localvalue;
+        this->numberobj_66_value = localvalue;
     }
     
-    void numberobj_58_value_setter(number v) {
+    void numberobj_67_value_setter(number v) {
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -24) {
@@ -54384,24 +55318,24 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 24;
         }
     
-        if (this->numberobj_58_currentFormat != 6) {
+        if (this->numberobj_67_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_58_value = localvalue;
+        this->numberobj_67_value = localvalue;
     }
     
-    void numberobj_59_value_setter(number v) {
+    void numberobj_68_value_setter(number v) {
         number localvalue = v;
     
-        if (this->numberobj_59_currentFormat != 6) {
+        if (this->numberobj_68_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_59_value = localvalue;
+        this->numberobj_68_value = localvalue;
     }
     
-    void numberobj_60_value_setter(number v) {
+    void numberobj_69_value_setter(number v) {
         number localvalue = v;
     
         if ((bool)(true) && localvalue < -100) {
@@ -54412,34 +55346,34 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 100;
         }
     
-        if (this->numberobj_60_currentFormat != 6) {
+        if (this->numberobj_69_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_60_value = localvalue;
+        this->numberobj_69_value = localvalue;
     }
     
-    void numberobj_61_value_setter(number v) {
+    void numberobj_70_value_setter(number v) {
         number localvalue = v;
     
-        if (this->numberobj_61_currentFormat != 6) {
+        if (this->numberobj_70_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_61_value = localvalue;
+        this->numberobj_70_value = localvalue;
     }
     
-    void numberobj_62_value_setter(number v) {
+    void numberobj_71_value_setter(number v) {
         number localvalue = v;
     
-        if (this->numberobj_62_currentFormat != 6) {
+        if (this->numberobj_71_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_62_value = localvalue;
+        this->numberobj_71_value = localvalue;
     }
     
-    void numberobj_63_value_setter(number v) {
+    void numberobj_72_value_setter(number v) {
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 2) {
@@ -54450,11 +55384,11 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
             localvalue = 200;
         }
     
-        if (this->numberobj_63_currentFormat != 6) {
+        if (this->numberobj_72_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_63_value = localvalue;
+        this->numberobj_72_value = localvalue;
     }
     
     number xfade_tilde_35_func_next(number pos, Int channel) {
@@ -54523,19 +55457,19 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
     
     void xfade_tilde_36_func_reset() {}
     
-    void numberobj_57_init() {
-        this->numberobj_57_currentFormat = 0;
+    void numberobj_66_init() {
+        this->numberobj_66_currentFormat = 0;
     }
     
-    void numberobj_57_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_57_value;
+    void numberobj_66_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_66_value;
     }
     
-    void numberobj_57_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_66_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_57_value_set(preset["value"]);
+        this->numberobj_66_value_set(preset["value"]);
     }
     
     number ftom_04_innerFtoM_next(number frequency, number tuning) {
@@ -54917,34 +55851,34 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->ftom_04_innerScala_update(this->ftom_04_scale, this->ftom_04_map);
     }
     
-    void numberobj_58_init() {
-        this->numberobj_58_currentFormat = 6;
+    void numberobj_67_init() {
+        this->numberobj_67_currentFormat = 6;
     }
     
-    void numberobj_58_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_58_value;
+    void numberobj_67_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_67_value;
     }
     
-    void numberobj_58_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_67_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_58_value_set(preset["value"]);
+        this->numberobj_67_value_set(preset["value"]);
     }
     
-    void numberobj_59_init() {
-        this->numberobj_59_currentFormat = 6;
+    void numberobj_68_init() {
+        this->numberobj_68_currentFormat = 6;
     }
     
-    void numberobj_59_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_59_value;
+    void numberobj_68_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_68_value;
     }
     
-    void numberobj_59_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_68_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_59_value_set(preset["value"]);
+        this->numberobj_68_value_set(preset["value"]);
     }
     
     void phasor_02_onBeatTimeChanged(number beattime) {
@@ -54984,19 +55918,19 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->phasor_02_ph_dspsetup();
     }
     
-    void numberobj_60_init() {
-        this->numberobj_60_currentFormat = 6;
+    void numberobj_69_init() {
+        this->numberobj_69_currentFormat = 6;
     }
     
-    void numberobj_60_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_60_value;
+    void numberobj_69_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_69_value;
     }
     
-    void numberobj_60_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_69_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_60_value_set(preset["value"]);
+        this->numberobj_69_value_set(preset["value"]);
     }
     
     void rate_tilde_02_reset() {
@@ -55017,49 +55951,49 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         this->rate_tilde_02_setupDone = true;
     }
     
-    void numberobj_61_init() {
-        this->numberobj_61_currentFormat = 6;
+    void numberobj_70_init() {
+        this->numberobj_70_currentFormat = 6;
     }
     
-    void numberobj_61_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_61_value;
+    void numberobj_70_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_70_value;
     }
     
-    void numberobj_61_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_70_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_61_value_set(preset["value"]);
+        this->numberobj_70_value_set(preset["value"]);
     }
     
-    void numberobj_62_init() {
-        this->numberobj_62_currentFormat = 6;
+    void numberobj_71_init() {
+        this->numberobj_71_currentFormat = 6;
     }
     
-    void numberobj_62_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_62_value;
+    void numberobj_71_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_71_value;
     }
     
-    void numberobj_62_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_71_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_62_value_set(preset["value"]);
+        this->numberobj_71_value_set(preset["value"]);
     }
     
-    void numberobj_63_init() {
-        this->numberobj_63_currentFormat = 6;
+    void numberobj_72_init() {
+        this->numberobj_72_currentFormat = 6;
     }
     
-    void numberobj_63_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_63_value;
+    void numberobj_72_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_72_value;
     }
     
-    void numberobj_63_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_72_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_63_value_set(preset["value"]);
+        this->numberobj_72_value_set(preset["value"]);
     }
     
     bool stackprotect_check() {
@@ -55105,43 +56039,43 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         p_25_target = 0;
         xfade_tilde_35_pos = 0;
         xfade_tilde_36_pos = 0;
-        numberobj_57_value = 0;
-        numberobj_57_value_setter(numberobj_57_value);
+        numberobj_66_value = 0;
+        numberobj_66_value_setter(numberobj_66_value);
         p_26_target = 0;
         ftom_04_base = 440;
         expr_53_in1 = 0;
         expr_53_in2 = 0;
         expr_53_out1 = 0;
         p_27_target = 0;
-        numberobj_58_value = 0;
-        numberobj_58_value_setter(numberobj_58_value);
-        numberobj_59_value = 0;
-        numberobj_59_value_setter(numberobj_59_value);
+        numberobj_67_value = 0;
+        numberobj_67_value_setter(numberobj_67_value);
+        numberobj_68_value = 0;
+        numberobj_68_value_setter(numberobj_68_value);
         linetilde_06_time = 50;
         linetilde_06_keepramp = true;
         p_28_target = 0;
-        p_29_target = 0;
         phasor_02_freq = 0;
-        numberobj_60_value = 0;
-        numberobj_60_value_setter(numberobj_60_value);
+        p_29_target = 0;
+        numberobj_69_value = 0;
+        numberobj_69_value_setter(numberobj_69_value);
         p_30_target = 0;
         floatnum_03_input_number = 0;
         floatnum_03_value = 0;
         rate_tilde_02_phase = 0;
         rate_tilde_02_multiplier = 1;
-        numberobj_61_value = 0;
-        numberobj_61_value_setter(numberobj_61_value);
+        numberobj_70_value = 0;
+        numberobj_70_value_setter(numberobj_70_value);
         linetilde_07_time = 50;
         linetilde_07_keepramp = true;
         floatnum_04_input_number = 0;
         floatnum_04_value = 0;
-        numberobj_62_value = 0;
-        numberobj_62_value_setter(numberobj_62_value);
+        numberobj_71_value = 0;
+        numberobj_71_value_setter(numberobj_71_value);
         mstosamps_03_ms = 0;
         linetilde_08_time = 50;
         linetilde_08_keepramp = true;
-        numberobj_63_value = 0;
-        numberobj_63_value_setter(numberobj_63_value);
+        numberobj_72_value = 0;
+        numberobj_72_value_setter(numberobj_72_value);
         _currentTime = 0;
         audioProcessSampleCount = 0;
         sampleOffsetIntoNextAudioBuffer = 0;
@@ -55159,8 +56093,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         maxvs = 0;
         sr = 44100;
         invsr = 0.000022675736961451248;
-        numberobj_57_currentFormat = 6;
-        numberobj_57_lastValue = 0;
+        numberobj_66_currentFormat = 6;
+        numberobj_66_lastValue = 0;
         ftom_04_innerFtoM_lastInValue = 0;
         ftom_04_innerFtoM_lastOutValue = 0;
         ftom_04_innerFtoM_lastTuning = 0;
@@ -55179,10 +56113,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         ftom_04_innerScala_kbmOctaveDegree = 12;
         ftom_04_innerScala_kbmMapSize = 0;
         ftom_04_innerScala_refFreq = 261.63;
-        numberobj_58_currentFormat = 6;
-        numberobj_58_lastValue = 0;
-        numberobj_59_currentFormat = 6;
-        numberobj_59_lastValue = 0;
+        numberobj_67_currentFormat = 6;
+        numberobj_67_lastValue = 0;
+        numberobj_68_currentFormat = 6;
+        numberobj_68_lastValue = 0;
         linetilde_06_currentValue = 0;
         phasor_02_sigbuf = nullptr;
         phasor_02_lastLockedPhase = 0;
@@ -55195,8 +56129,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         phasor_02_ph_currentPhase = 0;
         phasor_02_ph_conv = 0;
         phasor_02_setupDone = false;
-        numberobj_60_currentFormat = 6;
-        numberobj_60_lastValue = 0;
+        numberobj_69_currentFormat = 6;
+        numberobj_69_lastValue = 0;
         floatnum_03_stored = 100;
         rate_tilde_02_currentPhase = 0;
         rate_tilde_02_diff = 0;
@@ -55206,15 +56140,15 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         rate_tilde_02_wantlock = 1;
         rate_tilde_02_quant = 1;
         rate_tilde_02_setupDone = false;
-        numberobj_61_currentFormat = 6;
-        numberobj_61_lastValue = 0;
+        numberobj_70_currentFormat = 6;
+        numberobj_70_lastValue = 0;
         linetilde_07_currentValue = 0;
         floatnum_04_stored = 80;
-        numberobj_62_currentFormat = 6;
-        numberobj_62_lastValue = 0;
+        numberobj_71_currentFormat = 6;
+        numberobj_71_lastValue = 0;
         linetilde_08_currentValue = 100;
-        numberobj_63_currentFormat = 6;
-        numberobj_63_lastValue = 0;
+        numberobj_72_currentFormat = 6;
+        numberobj_72_lastValue = 0;
         stackprotect_count = 0;
         _voiceIndex = 0;
         _noteNumber = 0;
@@ -55227,7 +56161,7 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         number p_25_target;
         number xfade_tilde_35_pos;
         number xfade_tilde_36_pos;
-        number numberobj_57_value;
+        number numberobj_66_value;
         number p_26_target;
         list ftom_04_frequency;
         list ftom_04_scale;
@@ -55237,32 +56171,32 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         number expr_53_in2;
         number expr_53_out1;
         number p_27_target;
-        number numberobj_58_value;
-        number numberobj_59_value;
+        number numberobj_67_value;
+        number numberobj_68_value;
         list linetilde_06_segments;
         number linetilde_06_time;
         number linetilde_06_keepramp;
         number p_28_target;
-        number p_29_target;
         number phasor_02_freq;
-        number numberobj_60_value;
+        number p_29_target;
+        number numberobj_69_value;
         number p_30_target;
         number floatnum_03_input_number;
         number floatnum_03_value;
         number rate_tilde_02_phase;
         number rate_tilde_02_multiplier;
-        number numberobj_61_value;
+        number numberobj_70_value;
         list linetilde_07_segments;
         number linetilde_07_time;
         number linetilde_07_keepramp;
         number floatnum_04_input_number;
         number floatnum_04_value;
-        number numberobj_62_value;
+        number numberobj_71_value;
         number mstosamps_03_ms;
         list linetilde_08_segments;
         number linetilde_08_time;
         number linetilde_08_keepramp;
-        number numberobj_63_value;
+        number numberobj_72_value;
         MillisecondTime _currentTime;
         UInt64 audioProcessSampleCount;
         Index sampleOffsetIntoNextAudioBuffer;
@@ -55274,8 +56208,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         Index maxvs;
         number sr;
         number invsr;
-        Int numberobj_57_currentFormat;
-        number numberobj_57_lastValue;
+        Int numberobj_66_currentFormat;
+        number numberobj_66_lastValue;
         number ftom_04_innerFtoM_lastInValue;
         number ftom_04_innerFtoM_lastOutValue;
         number ftom_04_innerFtoM_lastTuning;
@@ -55296,10 +56230,10 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         Int ftom_04_innerScala_kbmOctaveDegree;
         Index ftom_04_innerScala_kbmMapSize;
         number ftom_04_innerScala_refFreq;
-        Int numberobj_58_currentFormat;
-        number numberobj_58_lastValue;
-        Int numberobj_59_currentFormat;
-        number numberobj_59_lastValue;
+        Int numberobj_67_currentFormat;
+        number numberobj_67_lastValue;
+        Int numberobj_68_currentFormat;
+        number numberobj_68_lastValue;
         list linetilde_06_activeRamps;
         number linetilde_06_currentValue;
         signal phasor_02_sigbuf;
@@ -55313,8 +56247,8 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         number phasor_02_ph_currentPhase;
         number phasor_02_ph_conv;
         bool phasor_02_setupDone;
-        Int numberobj_60_currentFormat;
-        number numberobj_60_lastValue;
+        Int numberobj_69_currentFormat;
+        number numberobj_69_lastValue;
         number floatnum_03_stored;
         SampleValue rate_tilde_02_currentPhase;
         SampleValue rate_tilde_02_diff;
@@ -55324,41 +56258,41 @@ class RNBOSubpatcher_1613 : public PatcherInterfaceImpl {
         Int rate_tilde_02_wantlock;
         Int rate_tilde_02_quant;
         bool rate_tilde_02_setupDone;
-        Int numberobj_61_currentFormat;
-        number numberobj_61_lastValue;
+        Int numberobj_70_currentFormat;
+        number numberobj_70_lastValue;
         list linetilde_07_activeRamps;
         number linetilde_07_currentValue;
         number floatnum_04_stored;
-        Int numberobj_62_currentFormat;
-        number numberobj_62_lastValue;
+        Int numberobj_71_currentFormat;
+        number numberobj_71_lastValue;
         list linetilde_08_activeRamps;
         number linetilde_08_currentValue;
-        Int numberobj_63_currentFormat;
-        number numberobj_63_lastValue;
+        Int numberobj_72_currentFormat;
+        number numberobj_72_lastValue;
         number stackprotect_count;
         Index _voiceIndex;
         Int _noteNumber;
         Index isMuted;
         ParameterIndex parameterOffset;
-        RNBOSubpatcher_1583 p_25;
-        RNBOSubpatcher_1584 p_26;
-        RNBOSubpatcher_1585 p_27;
-        RNBOSubpatcher_1586 p_28;
-        RNBOSubpatcher_1587 p_29;
-        RNBOSubpatcher_1588 p_30;
+        RNBOSubpatcher_5125 p_25;
+        RNBOSubpatcher_5126 p_26;
+        RNBOSubpatcher_5127 p_27;
+        RNBOSubpatcher_5128 p_28;
+        RNBOSubpatcher_5129 p_29;
+        RNBOSubpatcher_5130 p_30;
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1614 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5156 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1614()
+    RNBOSubpatcher_5156()
     {}
     
-    ~RNBOSubpatcher_1614()
+    ~RNBOSubpatcher_5156()
     {
         deallocateSignals();
     }
@@ -55650,10 +56584,10 @@ class RNBOSubpatcher_1614 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1614* operator->() {
+    RNBOSubpatcher_5156* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1614* operator->() const {
+    const RNBOSubpatcher_5156* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -56063,16 +56997,16 @@ class RNBOSubpatcher_1614 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5157 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1615()
+    RNBOSubpatcher_5157()
     {}
     
-    ~RNBOSubpatcher_1615()
+    ~RNBOSubpatcher_5157()
     {
         deallocateSignals();
     }
@@ -56528,17 +57462,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
     
     protected:
     
-    class RNBOSubpatcher_1605 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5147 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1615;
+            friend class RNBOSubpatcher_5157;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1605()
+            RNBOSubpatcher_5147()
             {}
             
-            ~RNBOSubpatcher_1605()
+            ~RNBOSubpatcher_5147()
             {
                 deallocateSignals();
             }
@@ -57099,20 +58033,20 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 case TAG("valin"):
                     {
                     if (TAG("diffusion2/diffuser[1]/number_obj-82") == objectId)
-                        this->numberobj_64_valin_set(payload);
+                        this->numberobj_73_valin_set(payload);
             
                     if (TAG("diffusion2/diffuser[1]/number_obj-84") == objectId)
-                        this->numberobj_65_valin_set(payload);
+                        this->numberobj_74_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
                     if (TAG("diffusion2/diffuser[1]/number_obj-82") == objectId)
-                        this->numberobj_64_format_set(payload);
+                        this->numberobj_73_format_set(payload);
             
                     if (TAG("diffusion2/diffuser[1]/number_obj-84") == objectId)
-                        this->numberobj_65_format_set(payload);
+                        this->numberobj_74_format_set(payload);
             
                     break;
                     }
@@ -57263,17 +58197,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             
             protected:
             
-            class RNBOSubpatcher_1589 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5131 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1589()
+                        RNBOSubpatcher_5131()
                         {}
                         
-                        ~RNBOSubpatcher_1589()
+                        ~RNBOSubpatcher_5131()
                         {
                             deallocateSignals();
                         }
@@ -57554,14 +58488,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1589* operator->() {
+                        RNBOSubpatcher_5131* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1589* operator->() const {
+                        const RNBOSubpatcher_5131* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -58480,17 +59414,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1590 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5132 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1590()
+                        RNBOSubpatcher_5132()
                         {}
                         
-                        ~RNBOSubpatcher_1590()
+                        ~RNBOSubpatcher_5132()
                         {
                             deallocateSignals();
                         }
@@ -58771,14 +59705,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1590* operator->() {
+                        RNBOSubpatcher_5132* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1590* operator->() const {
+                        const RNBOSubpatcher_5132* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -59697,17 +60631,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1591 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5133 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1591()
+                        RNBOSubpatcher_5133()
                         {}
                         
-                        ~RNBOSubpatcher_1591()
+                        ~RNBOSubpatcher_5133()
                         {
                             deallocateSignals();
                         }
@@ -59988,14 +60922,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1591* operator->() {
+                        RNBOSubpatcher_5133* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1591* operator->() const {
+                        const RNBOSubpatcher_5133* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -60914,17 +61848,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1592 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5134 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1592()
+                        RNBOSubpatcher_5134()
                         {}
                         
-                        ~RNBOSubpatcher_1592()
+                        ~RNBOSubpatcher_5134()
                         {
                             deallocateSignals();
                         }
@@ -61205,14 +62139,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1592* operator->() {
+                        RNBOSubpatcher_5134* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1592* operator->() const {
+                        const RNBOSubpatcher_5134* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -62131,17 +63065,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1593 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5135 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1593()
+                        RNBOSubpatcher_5135()
                         {}
                         
-                        ~RNBOSubpatcher_1593()
+                        ~RNBOSubpatcher_5135()
                         {
                             deallocateSignals();
                         }
@@ -62422,14 +63356,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1593* operator->() {
+                        RNBOSubpatcher_5135* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1593* operator->() const {
+                        const RNBOSubpatcher_5135* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -63348,17 +64282,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1594 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5136 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1594()
+                        RNBOSubpatcher_5136()
                         {}
                         
-                        ~RNBOSubpatcher_1594()
+                        ~RNBOSubpatcher_5136()
                         {
                             deallocateSignals();
                         }
@@ -63639,14 +64573,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1594* operator->() {
+                        RNBOSubpatcher_5136* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1594* operator->() const {
+                        const RNBOSubpatcher_5136* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -64565,17 +65499,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1595 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5137 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1595()
+                        RNBOSubpatcher_5137()
                         {}
                         
-                        ~RNBOSubpatcher_1595()
+                        ~RNBOSubpatcher_5137()
                         {
                             deallocateSignals();
                         }
@@ -64856,14 +65790,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1595* operator->() {
+                        RNBOSubpatcher_5137* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1595* operator->() const {
+                        const RNBOSubpatcher_5137* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -65782,17 +66716,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1596 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5138 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1605;
+                        friend class RNBOSubpatcher_5147;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1596()
+                        RNBOSubpatcher_5138()
                         {}
                         
-                        ~RNBOSubpatcher_1596()
+                        ~RNBOSubpatcher_5138()
                         {
                             deallocateSignals();
                         }
@@ -66073,14 +67007,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1596* operator->() {
+                        RNBOSubpatcher_5138* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1596* operator->() const {
+                        const RNBOSubpatcher_5138* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1605* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1605 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5147* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5147 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -67005,14 +67939,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1605* operator->() {
+            RNBOSubpatcher_5147* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1605* operator->() const {
+            const RNBOSubpatcher_5147* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1615* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1615 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5157* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5157 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -67028,38 +67962,38 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             }
             
             void eventinlet_73_out1_bang_bang() {
-                this->numberobj_64_value_bang();
+                this->numberobj_73_value_bang();
             }
             
             void eventinlet_73_out1_number_set(number v) {
-                this->numberobj_64_value_set(v);
+                this->numberobj_73_value_set(v);
             }
             
-            void numberobj_64_valin_set(number v) {
-                this->numberobj_64_value_set(v);
+            void numberobj_73_valin_set(number v) {
+                this->numberobj_73_value_set(v);
             }
             
-            void numberobj_64_format_set(number v) {
-                this->numberobj_64_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_73_format_set(number v) {
+                this->numberobj_73_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void eventinlet_74_out1_bang_bang() {
-                this->numberobj_65_value_bang();
+                this->numberobj_74_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_74_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_65_value_set(converted);
+                    this->numberobj_74_value_set(converted);
                 }
             }
             
-            void numberobj_65_valin_set(number v) {
-                this->numberobj_65_value_set(v);
+            void numberobj_74_valin_set(number v) {
+                this->numberobj_74_value_set(v);
             }
             
-            void numberobj_65_format_set(number v) {
-                this->numberobj_65_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_74_format_set(number v) {
+                this->numberobj_74_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void deallocateSignals() {
@@ -67088,8 +68022,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
-                this->numberobj_64_init();
-                this->numberobj_65_init();
+                this->numberobj_73_init();
+                this->numberobj_74_init();
                 this->p_31->initializeObjects();
                 this->p_32->initializeObjects();
                 this->p_33->initializeObjects();
@@ -67342,7 +68276,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->expr_54_out1_set(this->expr_54_in1 * this->expr_54_in2);//#map:diffusion2/diffuser[1]/*_obj-17:1
             }
             
-            void numberobj_64_output_set(number v) {
+            void numberobj_73_output_set(number v) {
                 this->expr_61_in1_set(v);
                 this->expr_60_in1_set(v);
                 this->expr_58_in1_set(v);
@@ -67353,22 +68287,22 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->expr_54_in1_set(v);
             }
             
-            void numberobj_64_value_set(number v) {
-                this->numberobj_64_value_setter(v);
-                v = this->numberobj_64_value;
+            void numberobj_73_value_set(number v) {
+                this->numberobj_73_value_setter(v);
+                v = this->numberobj_73_value;
                 number localvalue = v;
             
-                if (this->numberobj_64_currentFormat != 6) {
+                if (this->numberobj_73_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_64_output_set(localvalue);
+                this->numberobj_73_output_set(localvalue);
             }
             
             template<typename LISTTYPE> void eventinlet_73_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_64_value_set(converted);
+                    this->numberobj_73_value_set(converted);
                 }
             }
             
@@ -67412,7 +68346,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->p_32->eventinlet_60_out1_number_set(v);
             }
             
-            void numberobj_65_output_set(number v) {
+            void numberobj_74_output_set(number v) {
                 this->p_38_in3_number_set(v);
                 this->p_37_in3_number_set(v);
                 this->p_36_in3_number_set(v);
@@ -67423,42 +68357,42 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->p_32_in3_number_set(v);
             }
             
-            void numberobj_65_value_set(number v) {
-                this->numberobj_65_value_setter(v);
-                v = this->numberobj_65_value;
+            void numberobj_74_value_set(number v) {
+                this->numberobj_74_value_setter(v);
+                v = this->numberobj_74_value;
                 number localvalue = v;
             
-                if (this->numberobj_65_currentFormat != 6) {
+                if (this->numberobj_74_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_65_output_set(localvalue);
+                this->numberobj_74_output_set(localvalue);
             }
             
             void eventinlet_74_out1_number_set(number v) {
-                this->numberobj_65_value_set(v);
+                this->numberobj_74_value_set(v);
             }
             
-            void numberobj_64_value_bang() {
-                number v = this->numberobj_64_value;
+            void numberobj_73_value_bang() {
+                number v = this->numberobj_73_value;
                 number localvalue = v;
             
-                if (this->numberobj_64_currentFormat != 6) {
+                if (this->numberobj_73_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_64_output_set(localvalue);
+                this->numberobj_73_output_set(localvalue);
             }
             
-            void numberobj_65_value_bang() {
-                number v = this->numberobj_65_value;
+            void numberobj_74_value_bang() {
+                number v = this->numberobj_74_value;
                 number localvalue = v;
             
-                if (this->numberobj_65_currentFormat != 6) {
+                if (this->numberobj_74_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_65_output_set(localvalue);
+                this->numberobj_74_output_set(localvalue);
             }
             
             void p_31_perform(const SampleValue * in1, SampleValue * out1, Index n) {
@@ -67532,54 +68466,54 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->stackprotect_count = __stackprotect_count;
             }
             
-            void numberobj_64_value_setter(number v) {
+            void numberobj_73_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_64_currentFormat != 6) {
+                if (this->numberobj_73_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_64_value = localvalue;
+                this->numberobj_73_value = localvalue;
             }
             
-            void numberobj_65_value_setter(number v) {
+            void numberobj_74_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_65_currentFormat != 6) {
+                if (this->numberobj_74_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_65_value = localvalue;
+                this->numberobj_74_value = localvalue;
             }
             
-            void numberobj_64_init() {
-                this->numberobj_64_currentFormat = 6;
+            void numberobj_73_init() {
+                this->numberobj_73_currentFormat = 6;
             }
             
-            void numberobj_64_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_64_value;
+            void numberobj_73_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_73_value;
             }
             
-            void numberobj_64_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_73_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_64_value_set(preset["value"]);
+                this->numberobj_73_value_set(preset["value"]);
             }
             
-            void numberobj_65_init() {
-                this->numberobj_65_currentFormat = 6;
+            void numberobj_74_init() {
+                this->numberobj_74_currentFormat = 6;
             }
             
-            void numberobj_65_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_65_value;
+            void numberobj_74_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_74_value;
             }
             
-            void numberobj_65_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_74_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_65_value_set(preset["value"]);
+                this->numberobj_74_value_set(preset["value"]);
             }
             
             bool stackprotect_check() {
@@ -67632,8 +68566,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 expr_55_out1 = 0;
                 p_33_target = 0;
                 p_34_target = 0;
-                numberobj_64_value = 0;
-                numberobj_64_value_setter(numberobj_64_value);
+                numberobj_73_value = 0;
+                numberobj_73_value_setter(numberobj_73_value);
                 expr_56_in1 = 0;
                 expr_56_in2 = 0.9;
                 expr_56_out1 = 0;
@@ -67648,8 +68582,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 expr_59_in1 = 0;
                 expr_59_in2 = 0.8;
                 expr_59_out1 = 0;
-                numberobj_65_value = 0;
-                numberobj_65_value_setter(numberobj_65_value);
+                numberobj_74_value = 0;
+                numberobj_74_value_setter(numberobj_74_value);
                 p_37_target = 0;
                 p_38_target = 0;
                 expr_60_in1 = 0;
@@ -67670,10 +68604,10 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
-                numberobj_64_currentFormat = 6;
-                numberobj_64_lastValue = 0;
-                numberobj_65_currentFormat = 6;
-                numberobj_65_lastValue = 0;
+                numberobj_73_currentFormat = 6;
+                numberobj_73_lastValue = 0;
+                numberobj_74_currentFormat = 6;
+                numberobj_74_lastValue = 0;
                 stackprotect_count = 0;
                 _voiceIndex = 0;
                 _noteNumber = 0;
@@ -67693,7 +68627,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 number expr_55_out1;
                 number p_33_target;
                 number p_34_target;
-                number numberobj_64_value;
+                number numberobj_73_value;
                 number expr_56_in1;
                 number expr_56_in2;
                 number expr_56_out1;
@@ -67708,7 +68642,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 number expr_59_in1;
                 number expr_59_in2;
                 number expr_59_out1;
-                number numberobj_65_value;
+                number numberobj_74_value;
                 number p_37_target;
                 number p_38_target;
                 number expr_60_in1;
@@ -67728,37 +68662,37 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
-                Int numberobj_64_currentFormat;
-                number numberobj_64_lastValue;
-                Int numberobj_65_currentFormat;
-                number numberobj_65_lastValue;
+                Int numberobj_73_currentFormat;
+                number numberobj_73_lastValue;
+                Int numberobj_74_currentFormat;
+                number numberobj_74_lastValue;
                 number stackprotect_count;
                 Index _voiceIndex;
                 Int _noteNumber;
                 Index isMuted;
                 ParameterIndex parameterOffset;
-                RNBOSubpatcher_1589 p_31;
-                RNBOSubpatcher_1590 p_32;
-                RNBOSubpatcher_1591 p_33;
-                RNBOSubpatcher_1592 p_34;
-                RNBOSubpatcher_1593 p_35;
-                RNBOSubpatcher_1594 p_36;
-                RNBOSubpatcher_1595 p_37;
-                RNBOSubpatcher_1596 p_38;
+                RNBOSubpatcher_5131 p_31;
+                RNBOSubpatcher_5132 p_32;
+                RNBOSubpatcher_5133 p_33;
+                RNBOSubpatcher_5134 p_34;
+                RNBOSubpatcher_5135 p_35;
+                RNBOSubpatcher_5136 p_36;
+                RNBOSubpatcher_5137 p_37;
+                RNBOSubpatcher_5138 p_38;
                 bool _isInitialized = false;
     };
     
-    class RNBOSubpatcher_1606 : public PatcherInterfaceImpl {
+    class RNBOSubpatcher_5148 : public PatcherInterfaceImpl {
             
-            friend class RNBOSubpatcher_1615;
+            friend class RNBOSubpatcher_5157;
             friend class rnbomatic;
             
             public:
             
-            RNBOSubpatcher_1606()
+            RNBOSubpatcher_5148()
             {}
             
-            ~RNBOSubpatcher_1606()
+            ~RNBOSubpatcher_5148()
             {
                 deallocateSignals();
             }
@@ -68319,20 +69253,20 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 case TAG("valin"):
                     {
                     if (TAG("diffusion2/diffuser/number_obj-82") == objectId)
-                        this->numberobj_66_valin_set(payload);
+                        this->numberobj_75_valin_set(payload);
             
                     if (TAG("diffusion2/diffuser/number_obj-84") == objectId)
-                        this->numberobj_67_valin_set(payload);
+                        this->numberobj_76_valin_set(payload);
             
                     break;
                     }
                 case TAG("format"):
                     {
                     if (TAG("diffusion2/diffuser/number_obj-82") == objectId)
-                        this->numberobj_66_format_set(payload);
+                        this->numberobj_75_format_set(payload);
             
                     if (TAG("diffusion2/diffuser/number_obj-84") == objectId)
-                        this->numberobj_67_format_set(payload);
+                        this->numberobj_76_format_set(payload);
             
                     break;
                     }
@@ -68483,17 +69417,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             
             protected:
             
-            class RNBOSubpatcher_1597 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5139 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1597()
+                        RNBOSubpatcher_5139()
                         {}
                         
-                        ~RNBOSubpatcher_1597()
+                        ~RNBOSubpatcher_5139()
                         {
                             deallocateSignals();
                         }
@@ -68774,14 +69708,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1597* operator->() {
+                        RNBOSubpatcher_5139* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1597* operator->() const {
+                        const RNBOSubpatcher_5139* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -69700,17 +70634,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1598 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5140 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1598()
+                        RNBOSubpatcher_5140()
                         {}
                         
-                        ~RNBOSubpatcher_1598()
+                        ~RNBOSubpatcher_5140()
                         {
                             deallocateSignals();
                         }
@@ -69991,14 +70925,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1598* operator->() {
+                        RNBOSubpatcher_5140* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1598* operator->() const {
+                        const RNBOSubpatcher_5140* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -70917,17 +71851,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1599 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5141 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1599()
+                        RNBOSubpatcher_5141()
                         {}
                         
-                        ~RNBOSubpatcher_1599()
+                        ~RNBOSubpatcher_5141()
                         {
                             deallocateSignals();
                         }
@@ -71208,14 +72142,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1599* operator->() {
+                        RNBOSubpatcher_5141* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1599* operator->() const {
+                        const RNBOSubpatcher_5141* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -72134,17 +73068,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1600 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5142 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1600()
+                        RNBOSubpatcher_5142()
                         {}
                         
-                        ~RNBOSubpatcher_1600()
+                        ~RNBOSubpatcher_5142()
                         {
                             deallocateSignals();
                         }
@@ -72425,14 +73359,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1600* operator->() {
+                        RNBOSubpatcher_5142* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1600* operator->() const {
+                        const RNBOSubpatcher_5142* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -73351,17 +74285,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1601 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5143 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1601()
+                        RNBOSubpatcher_5143()
                         {}
                         
-                        ~RNBOSubpatcher_1601()
+                        ~RNBOSubpatcher_5143()
                         {
                             deallocateSignals();
                         }
@@ -73642,14 +74576,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1601* operator->() {
+                        RNBOSubpatcher_5143* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1601* operator->() const {
+                        const RNBOSubpatcher_5143* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -74568,17 +75502,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1602 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5144 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1602()
+                        RNBOSubpatcher_5144()
                         {}
                         
-                        ~RNBOSubpatcher_1602()
+                        ~RNBOSubpatcher_5144()
                         {
                             deallocateSignals();
                         }
@@ -74859,14 +75793,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1602* operator->() {
+                        RNBOSubpatcher_5144* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1602* operator->() const {
+                        const RNBOSubpatcher_5144* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -75785,17 +76719,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1603 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5145 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1603()
+                        RNBOSubpatcher_5145()
                         {}
                         
-                        ~RNBOSubpatcher_1603()
+                        ~RNBOSubpatcher_5145()
                         {
                             deallocateSignals();
                         }
@@ -76076,14 +77010,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1603* operator->() {
+                        RNBOSubpatcher_5145* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1603* operator->() const {
+                        const RNBOSubpatcher_5145* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -77002,17 +77936,17 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                             bool _isInitialized = false;
             };
             
-            class RNBOSubpatcher_1604 : public PatcherInterfaceImpl {
+            class RNBOSubpatcher_5146 : public PatcherInterfaceImpl {
                         
-                        friend class RNBOSubpatcher_1606;
+                        friend class RNBOSubpatcher_5148;
                         friend class rnbomatic;
                         
                         public:
                         
-                        RNBOSubpatcher_1604()
+                        RNBOSubpatcher_5146()
                         {}
                         
-                        ~RNBOSubpatcher_1604()
+                        ~RNBOSubpatcher_5146()
                         {
                             deallocateSignals();
                         }
@@ -77293,14 +78227,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                         	updateTime(time, (EXTERNALENGINE*)nullptr);
                         }
                         
-                        RNBOSubpatcher_1604* operator->() {
+                        RNBOSubpatcher_5146* operator->() {
                             return this;
                         }
-                        const RNBOSubpatcher_1604* operator->() const {
+                        const RNBOSubpatcher_5146* operator->() const {
                             return this;
                         }
-                        virtual RNBOSubpatcher_1606* getPatcher() const {
-                            return static_cast<RNBOSubpatcher_1606 *>(_parentPatcher);
+                        virtual RNBOSubpatcher_5148* getPatcher() const {
+                            return static_cast<RNBOSubpatcher_5148 *>(_parentPatcher);
                         }
                         
                         rnbomatic* getTopLevelPatcher() {
@@ -78225,14 +79159,14 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             	updateTime(time, (EXTERNALENGINE*)nullptr);
             }
             
-            RNBOSubpatcher_1606* operator->() {
+            RNBOSubpatcher_5148* operator->() {
                 return this;
             }
-            const RNBOSubpatcher_1606* operator->() const {
+            const RNBOSubpatcher_5148* operator->() const {
                 return this;
             }
-            virtual RNBOSubpatcher_1615* getPatcher() const {
-                return static_cast<RNBOSubpatcher_1615 *>(_parentPatcher);
+            virtual RNBOSubpatcher_5157* getPatcher() const {
+                return static_cast<RNBOSubpatcher_5157 *>(_parentPatcher);
             }
             
             rnbomatic* getTopLevelPatcher() {
@@ -78248,38 +79182,38 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             }
             
             void eventinlet_91_out1_bang_bang() {
-                this->numberobj_66_value_bang();
+                this->numberobj_75_value_bang();
             }
             
             void eventinlet_91_out1_number_set(number v) {
-                this->numberobj_66_value_set(v);
+                this->numberobj_75_value_set(v);
             }
             
-            void numberobj_66_valin_set(number v) {
-                this->numberobj_66_value_set(v);
+            void numberobj_75_valin_set(number v) {
+                this->numberobj_75_value_set(v);
             }
             
-            void numberobj_66_format_set(number v) {
-                this->numberobj_66_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_75_format_set(number v) {
+                this->numberobj_75_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void eventinlet_92_out1_bang_bang() {
-                this->numberobj_67_value_bang();
+                this->numberobj_76_value_bang();
             }
             
             template<typename LISTTYPE> void eventinlet_92_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_67_value_set(converted);
+                    this->numberobj_76_value_set(converted);
                 }
             }
             
-            void numberobj_67_valin_set(number v) {
-                this->numberobj_67_value_set(v);
+            void numberobj_76_valin_set(number v) {
+                this->numberobj_76_value_set(v);
             }
             
-            void numberobj_67_format_set(number v) {
-                this->numberobj_67_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+            void numberobj_76_format_set(number v) {
+                this->numberobj_76_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
             }
             
             void deallocateSignals() {
@@ -78308,8 +79242,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
             void setProbingTarget(MessageTag ) {}
             
             void initializeObjects() {
-                this->numberobj_66_init();
-                this->numberobj_67_init();
+                this->numberobj_75_init();
+                this->numberobj_76_init();
                 this->p_39->initializeObjects();
                 this->p_40->initializeObjects();
                 this->p_41->initializeObjects();
@@ -78562,7 +79496,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->expr_62_out1_set(this->expr_62_in1 * this->expr_62_in2);//#map:diffusion2/diffuser/*_obj-17:1
             }
             
-            void numberobj_66_output_set(number v) {
+            void numberobj_75_output_set(number v) {
                 this->expr_69_in1_set(v);
                 this->expr_68_in1_set(v);
                 this->expr_66_in1_set(v);
@@ -78573,22 +79507,22 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->expr_62_in1_set(v);
             }
             
-            void numberobj_66_value_set(number v) {
-                this->numberobj_66_value_setter(v);
-                v = this->numberobj_66_value;
+            void numberobj_75_value_set(number v) {
+                this->numberobj_75_value_setter(v);
+                v = this->numberobj_75_value;
                 number localvalue = v;
             
-                if (this->numberobj_66_currentFormat != 6) {
+                if (this->numberobj_75_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_66_output_set(localvalue);
+                this->numberobj_75_output_set(localvalue);
             }
             
             template<typename LISTTYPE> void eventinlet_91_out1_list_set(const LISTTYPE& v) {
                 {
                     number converted = (v->length > 0 ? v[0] : 0);
-                    this->numberobj_66_value_set(converted);
+                    this->numberobj_75_value_set(converted);
                 }
             }
             
@@ -78632,7 +79566,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->p_40->eventinlet_78_out1_number_set(v);
             }
             
-            void numberobj_67_output_set(number v) {
+            void numberobj_76_output_set(number v) {
                 this->p_46_in3_number_set(v);
                 this->p_45_in3_number_set(v);
                 this->p_44_in3_number_set(v);
@@ -78643,42 +79577,42 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->p_40_in3_number_set(v);
             }
             
-            void numberobj_67_value_set(number v) {
-                this->numberobj_67_value_setter(v);
-                v = this->numberobj_67_value;
+            void numberobj_76_value_set(number v) {
+                this->numberobj_76_value_setter(v);
+                v = this->numberobj_76_value;
                 number localvalue = v;
             
-                if (this->numberobj_67_currentFormat != 6) {
+                if (this->numberobj_76_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_67_output_set(localvalue);
+                this->numberobj_76_output_set(localvalue);
             }
             
             void eventinlet_92_out1_number_set(number v) {
-                this->numberobj_67_value_set(v);
+                this->numberobj_76_value_set(v);
             }
             
-            void numberobj_66_value_bang() {
-                number v = this->numberobj_66_value;
+            void numberobj_75_value_bang() {
+                number v = this->numberobj_75_value;
                 number localvalue = v;
             
-                if (this->numberobj_66_currentFormat != 6) {
+                if (this->numberobj_75_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_66_output_set(localvalue);
+                this->numberobj_75_output_set(localvalue);
             }
             
-            void numberobj_67_value_bang() {
-                number v = this->numberobj_67_value;
+            void numberobj_76_value_bang() {
+                number v = this->numberobj_76_value;
                 number localvalue = v;
             
-                if (this->numberobj_67_currentFormat != 6) {
+                if (this->numberobj_76_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_67_output_set(localvalue);
+                this->numberobj_76_output_set(localvalue);
             }
             
             void p_39_perform(const SampleValue * in1, SampleValue * out1, Index n) {
@@ -78752,54 +79686,54 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 this->stackprotect_count = __stackprotect_count;
             }
             
-            void numberobj_66_value_setter(number v) {
+            void numberobj_75_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_66_currentFormat != 6) {
+                if (this->numberobj_75_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_66_value = localvalue;
+                this->numberobj_75_value = localvalue;
             }
             
-            void numberobj_67_value_setter(number v) {
+            void numberobj_76_value_setter(number v) {
                 number localvalue = v;
             
-                if (this->numberobj_67_currentFormat != 6) {
+                if (this->numberobj_76_currentFormat != 6) {
                     localvalue = trunc(localvalue);
                 }
             
-                this->numberobj_67_value = localvalue;
+                this->numberobj_76_value = localvalue;
             }
             
-            void numberobj_66_init() {
-                this->numberobj_66_currentFormat = 6;
+            void numberobj_75_init() {
+                this->numberobj_75_currentFormat = 6;
             }
             
-            void numberobj_66_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_66_value;
+            void numberobj_75_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_75_value;
             }
             
-            void numberobj_66_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_75_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_66_value_set(preset["value"]);
+                this->numberobj_75_value_set(preset["value"]);
             }
             
-            void numberobj_67_init() {
-                this->numberobj_67_currentFormat = 6;
+            void numberobj_76_init() {
+                this->numberobj_76_currentFormat = 6;
             }
             
-            void numberobj_67_getPresetValue(PatcherStateInterface& preset) {
-                preset["value"] = this->numberobj_67_value;
+            void numberobj_76_getPresetValue(PatcherStateInterface& preset) {
+                preset["value"] = this->numberobj_76_value;
             }
             
-            void numberobj_67_setPresetValue(PatcherStateInterface& preset) {
+            void numberobj_76_setPresetValue(PatcherStateInterface& preset) {
                 if ((bool)(stateIsEmpty(preset)))
                     return;
             
-                this->numberobj_67_value_set(preset["value"]);
+                this->numberobj_76_value_set(preset["value"]);
             }
             
             bool stackprotect_check() {
@@ -78852,8 +79786,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 expr_63_out1 = 0;
                 p_41_target = 0;
                 p_42_target = 0;
-                numberobj_66_value = 0;
-                numberobj_66_value_setter(numberobj_66_value);
+                numberobj_75_value = 0;
+                numberobj_75_value_setter(numberobj_75_value);
                 expr_64_in1 = 0;
                 expr_64_in2 = 0.9;
                 expr_64_out1 = 0;
@@ -78868,8 +79802,8 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 expr_67_in1 = 0;
                 expr_67_in2 = 0.8;
                 expr_67_out1 = 0;
-                numberobj_67_value = 0;
-                numberobj_67_value_setter(numberobj_67_value);
+                numberobj_76_value = 0;
+                numberobj_76_value_setter(numberobj_76_value);
                 p_45_target = 0;
                 p_46_target = 0;
                 expr_68_in1 = 0;
@@ -78890,10 +79824,10 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 maxvs = 0;
                 sr = 44100;
                 invsr = 0.000022675736961451248;
-                numberobj_66_currentFormat = 6;
-                numberobj_66_lastValue = 0;
-                numberobj_67_currentFormat = 6;
-                numberobj_67_lastValue = 0;
+                numberobj_75_currentFormat = 6;
+                numberobj_75_lastValue = 0;
+                numberobj_76_currentFormat = 6;
+                numberobj_76_lastValue = 0;
                 stackprotect_count = 0;
                 _voiceIndex = 0;
                 _noteNumber = 0;
@@ -78913,7 +79847,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 number expr_63_out1;
                 number p_41_target;
                 number p_42_target;
-                number numberobj_66_value;
+                number numberobj_75_value;
                 number expr_64_in1;
                 number expr_64_in2;
                 number expr_64_out1;
@@ -78928,7 +79862,7 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 number expr_67_in1;
                 number expr_67_in2;
                 number expr_67_out1;
-                number numberobj_67_value;
+                number numberobj_76_value;
                 number p_45_target;
                 number p_46_target;
                 number expr_68_in1;
@@ -78948,23 +79882,23 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
                 Index maxvs;
                 number sr;
                 number invsr;
-                Int numberobj_66_currentFormat;
-                number numberobj_66_lastValue;
-                Int numberobj_67_currentFormat;
-                number numberobj_67_lastValue;
+                Int numberobj_75_currentFormat;
+                number numberobj_75_lastValue;
+                Int numberobj_76_currentFormat;
+                number numberobj_76_lastValue;
                 number stackprotect_count;
                 Index _voiceIndex;
                 Int _noteNumber;
                 Index isMuted;
                 ParameterIndex parameterOffset;
-                RNBOSubpatcher_1597 p_39;
-                RNBOSubpatcher_1598 p_40;
-                RNBOSubpatcher_1599 p_41;
-                RNBOSubpatcher_1600 p_42;
-                RNBOSubpatcher_1601 p_43;
-                RNBOSubpatcher_1602 p_44;
-                RNBOSubpatcher_1603 p_45;
-                RNBOSubpatcher_1604 p_46;
+                RNBOSubpatcher_5139 p_39;
+                RNBOSubpatcher_5140 p_40;
+                RNBOSubpatcher_5141 p_41;
+                RNBOSubpatcher_5142 p_42;
+                RNBOSubpatcher_5143 p_43;
+                RNBOSubpatcher_5144 p_44;
+                RNBOSubpatcher_5145 p_45;
+                RNBOSubpatcher_5146 p_46;
                 bool _isInitialized = false;
     };
     
@@ -78974,10 +79908,10 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1615* operator->() {
+    RNBOSubpatcher_5157* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1615* operator->() const {
+    const RNBOSubpatcher_5157* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -79355,21 +80289,21 @@ class RNBOSubpatcher_1615 : public PatcherInterfaceImpl {
         Int _noteNumber;
         Index isMuted;
         ParameterIndex parameterOffset;
-        RNBOSubpatcher_1605 p_47;
-        RNBOSubpatcher_1606 p_48;
+        RNBOSubpatcher_5147 p_47;
+        RNBOSubpatcher_5148 p_48;
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5158 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1616()
+    RNBOSubpatcher_5158()
     {}
     
-    ~RNBOSubpatcher_1616()
+    ~RNBOSubpatcher_5158()
     {
         deallocateSignals();
     }
@@ -79648,26 +80582,26 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         case TAG("valin"):
             {
             if (TAG("delay2/number_obj-30") == objectId)
-                this->numberobj_68_valin_set(payload);
+                this->numberobj_77_valin_set(payload);
     
             if (TAG("delay2/number_obj-27") == objectId)
-                this->numberobj_69_valin_set(payload);
+                this->numberobj_78_valin_set(payload);
     
             if (TAG("delay2/number_obj-50") == objectId)
-                this->numberobj_70_valin_set(payload);
+                this->numberobj_79_valin_set(payload);
     
             break;
             }
         case TAG("format"):
             {
             if (TAG("delay2/number_obj-30") == objectId)
-                this->numberobj_68_format_set(payload);
+                this->numberobj_77_format_set(payload);
     
             if (TAG("delay2/number_obj-27") == objectId)
-                this->numberobj_69_format_set(payload);
+                this->numberobj_78_format_set(payload);
     
             if (TAG("delay2/number_obj-50") == objectId)
-                this->numberobj_70_format_set(payload);
+                this->numberobj_79_format_set(payload);
     
             break;
             }
@@ -79784,10 +80718,10 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1616* operator->() {
+    RNBOSubpatcher_5158* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1616* operator->() const {
+    const RNBOSubpatcher_5158* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -79932,35 +80866,35 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
             this->param_16_lastValue = this->param_16_value;
         }
     
-        this->numberobj_70_value_set(v);
+        this->numberobj_79_value_set(v);
     }
     
     MillisecondTime getPatcherTime() const {
         return this->_currentTime;
     }
     
-    void numberobj_68_valin_set(number v) {
-        this->numberobj_68_value_set(v);
+    void numberobj_77_valin_set(number v) {
+        this->numberobj_77_value_set(v);
     }
     
-    void numberobj_68_format_set(number v) {
-        this->numberobj_68_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_77_format_set(number v) {
+        this->numberobj_77_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_69_valin_set(number v) {
-        this->numberobj_69_value_set(v);
+    void numberobj_78_valin_set(number v) {
+        this->numberobj_78_value_set(v);
     }
     
-    void numberobj_69_format_set(number v) {
-        this->numberobj_69_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_78_format_set(number v) {
+        this->numberobj_78_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
-    void numberobj_70_valin_set(number v) {
-        this->numberobj_70_value_set(v);
+    void numberobj_79_valin_set(number v) {
+        this->numberobj_79_value_set(v);
     }
     
-    void numberobj_70_format_set(number v) {
-        this->numberobj_70_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
+    void numberobj_79_format_set(number v) {
+        this->numberobj_79_currentFormat = trunc((v > 6 ? 6 : (v < 0 ? 0 : v)));
     }
     
     void deallocateSignals() {
@@ -79991,9 +80925,9 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
     void initializeObjects() {
         this->delaytilde_11_del_init();
         this->delaytilde_12_del_init();
-        this->numberobj_68_init();
-        this->numberobj_69_init();
-        this->numberobj_70_init();
+        this->numberobj_77_init();
+        this->numberobj_78_init();
+        this->numberobj_79_init();
     }
     
     Index getIsMuted()  {
@@ -80071,18 +81005,18 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         return v;
     }
     
-    void numberobj_69_output_set(number ) {}
+    void numberobj_78_output_set(number ) {}
     
-    void numberobj_69_value_set(number v) {
-        this->numberobj_69_value_setter(v);
-        v = this->numberobj_69_value;
+    void numberobj_78_value_set(number v) {
+        this->numberobj_78_value_setter(v);
+        v = this->numberobj_78_value;
         number localvalue = v;
     
-        if (this->numberobj_69_currentFormat != 6) {
+        if (this->numberobj_78_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_69_output_set(localvalue);
+        this->numberobj_78_output_set(localvalue);
     }
     
     void delaytilde_12_delay_set(number v) {
@@ -80099,7 +81033,7 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
     }
     
     void beatstosamps_02_out1_set(number v) {
-        this->numberobj_69_value_set(v);
+        this->numberobj_78_value_set(v);
         this->delaytilde_12_delay_set(v);
         this->delaytilde_11_delay_set(v);
         this->eventoutlet_09_in1_number_set(v);
@@ -80162,16 +81096,16 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         this->scale_08_out_set(tmp);
     }
     
-    void numberobj_70_output_set(number v) {
+    void numberobj_79_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->scale_08_input_set(converted);
         }
     }
     
-    void numberobj_70_value_set(number v) {
-        this->numberobj_70_value_setter(v);
-        v = this->numberobj_70_value;
+    void numberobj_79_value_set(number v) {
+        this->numberobj_79_value_setter(v);
+        v = this->numberobj_79_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 0) {
@@ -80182,15 +81116,15 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
             localvalue = 1;
         }
     
-        if (this->numberobj_70_currentFormat != 6) {
+        if (this->numberobj_79_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_70_output_set(localvalue);
+        this->numberobj_79_output_set(localvalue);
     }
     
     void mstosamps_04_out1_set(number v) {
-        this->numberobj_69_value_set(v);
+        this->numberobj_78_value_set(v);
     }
     
     void mstosamps_04_ms_set(number ms) {
@@ -80229,16 +81163,16 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         this->scale_07_out_set(tmp);
     }
     
-    void numberobj_68_output_set(number v) {
+    void numberobj_77_output_set(number v) {
         {
             listbase<number, 1> converted = {v};
             this->scale_07_input_set(converted);
         }
     }
     
-    void numberobj_68_value_set(number v) {
-        this->numberobj_68_value_setter(v);
-        v = this->numberobj_68_value;
+    void numberobj_77_value_set(number v) {
+        this->numberobj_77_value_setter(v);
+        v = this->numberobj_77_value;
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 0) {
@@ -80249,11 +81183,11 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
             localvalue = 1;
         }
     
-        if (this->numberobj_68_currentFormat != 6) {
+        if (this->numberobj_77_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_68_output_set(localvalue);
+        this->numberobj_77_output_set(localvalue);
     }
     
     void dspexpr_37_perform(const Sample * in1, SampleValue * out1, Index n) {
@@ -80397,7 +81331,7 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         this->stackprotect_count = __stackprotect_count;
     }
     
-    void numberobj_68_value_setter(number v) {
+    void numberobj_77_value_setter(number v) {
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 0) {
@@ -80408,24 +81342,24 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
             localvalue = 1;
         }
     
-        if (this->numberobj_68_currentFormat != 6) {
+        if (this->numberobj_77_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_68_value = localvalue;
+        this->numberobj_77_value = localvalue;
     }
     
-    void numberobj_69_value_setter(number v) {
+    void numberobj_78_value_setter(number v) {
         number localvalue = v;
     
-        if (this->numberobj_69_currentFormat != 6) {
+        if (this->numberobj_78_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_69_value = localvalue;
+        this->numberobj_78_value = localvalue;
     }
     
-    void numberobj_70_value_setter(number v) {
+    void numberobj_79_value_setter(number v) {
         number localvalue = v;
     
         if ((bool)(true) && localvalue < 0) {
@@ -80436,11 +81370,11 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
             localvalue = 1;
         }
     
-        if (this->numberobj_70_currentFormat != 6) {
+        if (this->numberobj_79_currentFormat != 6) {
             localvalue = trunc(localvalue);
         }
     
-        this->numberobj_70_value = localvalue;
+        this->numberobj_79_value = localvalue;
     }
     
     void delaytilde_11_del_step() {
@@ -80877,34 +81811,34 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         this->delaytilde_12_del_dspsetup();
     }
     
-    void numberobj_68_init() {
-        this->numberobj_68_currentFormat = 6;
+    void numberobj_77_init() {
+        this->numberobj_77_currentFormat = 6;
     }
     
-    void numberobj_68_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_68_value;
+    void numberobj_77_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_77_value;
     }
     
-    void numberobj_68_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_77_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_68_value_set(preset["value"]);
+        this->numberobj_77_value_set(preset["value"]);
     }
     
-    void numberobj_69_init() {
-        this->numberobj_69_currentFormat = 6;
+    void numberobj_78_init() {
+        this->numberobj_78_currentFormat = 6;
     }
     
-    void numberobj_69_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_69_value;
+    void numberobj_78_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_78_value;
     }
     
-    void numberobj_69_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_78_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_69_value_set(preset["value"]);
+        this->numberobj_78_value_set(preset["value"]);
     }
     
     void param_16_getPresetValue(PatcherStateInterface& preset) {
@@ -80918,19 +81852,19 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         this->param_16_value_set(preset["value"]);
     }
     
-    void numberobj_70_init() {
-        this->numberobj_70_currentFormat = 6;
+    void numberobj_79_init() {
+        this->numberobj_79_currentFormat = 6;
     }
     
-    void numberobj_70_getPresetValue(PatcherStateInterface& preset) {
-        preset["value"] = this->numberobj_70_value;
+    void numberobj_79_getPresetValue(PatcherStateInterface& preset) {
+        preset["value"] = this->numberobj_79_value;
     }
     
-    void numberobj_70_setPresetValue(PatcherStateInterface& preset) {
+    void numberobj_79_setPresetValue(PatcherStateInterface& preset) {
         if ((bool)(stateIsEmpty(preset)))
             return;
     
-        this->numberobj_70_value_set(preset["value"]);
+        this->numberobj_79_value_set(preset["value"]);
     }
     
     bool stackprotect_check() {
@@ -80979,22 +81913,22 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         delaytilde_12_delay = 22050;
         dspexpr_37_in1 = 0;
         dspexpr_38_in1 = 0;
-        numberobj_68_value = 0;
-        numberobj_68_value_setter(numberobj_68_value);
+        numberobj_77_value = 0;
+        numberobj_77_value_setter(numberobj_77_value);
         scale_07_inlow = 0;
         scale_07_inhigh = 1;
         scale_07_outlow = 0;
         scale_07_outhigh = 1000;
         scale_07_power = 1;
         mstosamps_04_ms = 0;
-        numberobj_69_value = 0;
-        numberobj_69_value_setter(numberobj_69_value);
+        numberobj_78_value = 0;
+        numberobj_78_value_setter(numberobj_78_value);
         param_16_value = 0.5;
         quantize_02_value = 0;
         quantize_02_quantum = 4;
         beatstosamps_02_beattime = 0;
-        numberobj_70_value = 0;
-        numberobj_70_value_setter(numberobj_70_value);
+        numberobj_79_value = 0;
+        numberobj_79_value_setter(numberobj_79_value);
         scale_08_inlow = 0;
         scale_08_inhigh = 1;
         scale_08_outlow = 0;
@@ -81033,13 +81967,13 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         delaytilde_12_del_reader = 0;
         delaytilde_12_del_writer = 0;
         delaytilde_12_setupDone = false;
-        numberobj_68_currentFormat = 6;
-        numberobj_68_lastValue = 0;
-        numberobj_69_currentFormat = 6;
-        numberobj_69_lastValue = 0;
+        numberobj_77_currentFormat = 6;
+        numberobj_77_lastValue = 0;
+        numberobj_78_currentFormat = 6;
+        numberobj_78_lastValue = 0;
         param_16_lastValue = 0;
-        numberobj_70_currentFormat = 6;
-        numberobj_70_lastValue = 0;
+        numberobj_79_currentFormat = 6;
+        numberobj_79_lastValue = 0;
         stackprotect_count = 0;
         _voiceIndex = 0;
         _noteNumber = 0;
@@ -81069,7 +82003,7 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         number delaytilde_12_delay;
         number dspexpr_37_in1;
         number dspexpr_38_in1;
-        number numberobj_68_value;
+        number numberobj_77_value;
         list scale_07_input;
         number scale_07_inlow;
         number scale_07_inhigh;
@@ -81078,12 +82012,12 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         number scale_07_power;
         list scale_07_out;
         number mstosamps_04_ms;
-        number numberobj_69_value;
+        number numberobj_78_value;
         number param_16_value;
         number quantize_02_value;
         number quantize_02_quantum;
         number beatstosamps_02_beattime;
-        number numberobj_70_value;
+        number numberobj_79_value;
         list scale_08_input;
         number scale_08_inlow;
         number scale_08_inhigh;
@@ -81124,13 +82058,13 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         Int delaytilde_12_del_reader;
         Int delaytilde_12_del_writer;
         bool delaytilde_12_setupDone;
-        Int numberobj_68_currentFormat;
-        number numberobj_68_lastValue;
-        Int numberobj_69_currentFormat;
-        number numberobj_69_lastValue;
+        Int numberobj_77_currentFormat;
+        number numberobj_77_lastValue;
+        Int numberobj_78_currentFormat;
+        number numberobj_78_lastValue;
         number param_16_lastValue;
-        Int numberobj_70_currentFormat;
-        number numberobj_70_lastValue;
+        Int numberobj_79_currentFormat;
+        number numberobj_79_lastValue;
         number stackprotect_count;
         DataRef delaytilde_11_del_bufferobj;
         DataRef delaytilde_12_del_bufferobj;
@@ -81141,16 +82075,16 @@ class RNBOSubpatcher_1616 : public PatcherInterfaceImpl {
         bool _isInitialized = false;
 };
 
-class RNBOSubpatcher_1617 : public PatcherInterfaceImpl {
+class RNBOSubpatcher_5159 : public PatcherInterfaceImpl {
     
     friend class rnbomatic;
     
     public:
     
-    RNBOSubpatcher_1617()
+    RNBOSubpatcher_5159()
     {}
     
-    ~RNBOSubpatcher_1617()
+    ~RNBOSubpatcher_5159()
     {
         deallocateSignals();
     }
@@ -81370,10 +82304,10 @@ class RNBOSubpatcher_1617 : public PatcherInterfaceImpl {
     	updateTime(time, (EXTERNALENGINE*)nullptr);
     }
     
-    RNBOSubpatcher_1617* operator->() {
+    RNBOSubpatcher_5159* operator->() {
         return this;
     }
-    const RNBOSubpatcher_1617* operator->() const {
+    const RNBOSubpatcher_5159* operator->() const {
         return this;
     }
     virtual rnbomatic* getPatcher() const {
@@ -82270,7 +83204,7 @@ MillisecondTime getPatcherTime() const {
 void deallocateSignals() {
     Index i;
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < 15; i++) {
         this->signals[i] = freeSignal(this->signals[i]);
     }
 
@@ -82564,14 +83498,6 @@ void xfade_tilde_55_pos_set(number v) {
 
 number param_19_value_constrain(number v) const {
     v = (v > 11 ? 11 : (v < 0 ? 0 : v));
-
-    {
-        number oneStep = (number)11 / (number)11;
-        number oneStepInv = (oneStep != 0 ? (number)1 / oneStep : 0);
-        number numberOfSteps = rnbo_fround((v - 0) * oneStepInv * 1 / (number)1) * 1;
-        v = numberOfSteps * oneStep + 0;
-    }
-
     return v;
 }
 
@@ -82586,15 +83512,7 @@ void p_53_in4_number_set(number v) {
 }
 
 number param_20_value_constrain(number v) const {
-    v = (v > 2 ? 2 : (v < 1 ? 1 : v));
-
-    {
-        number oneStep = 2 - 1;
-        number oneStepInv = (oneStep != 0 ? (number)1 / oneStep : 0);
-        number numberOfSteps = rnbo_fround((v - 1) * oneStepInv * 1 / (number)1) * 1;
-        v = numberOfSteps * oneStep + 1;
-    }
-
+    v = (v > 6 ? 6 : (v < 1 ? 1 : v));
     return v;
 }
 
@@ -82658,19 +83576,6 @@ void p_53_midihandler(int status, int channel, int port, ConstByteArray data, In
     RNBO_UNUSED(channel);
     RNBO_UNUSED(status);
     this->p_53->processMidiEvent(_currentTime, 0, data, length);
-}
-
-void midiin_01_midiout_set(number ) {}
-
-void midiin_01_midihandler(int status, int channel, int port, ConstByteArray data, Index length) {
-    RNBO_UNUSED(port);
-    RNBO_UNUSED(channel);
-    RNBO_UNUSED(status);
-    Index i;
-
-    for (i = 0; i < length; i++) {
-        this->midiin_01_midiout_set(data[i]);
-    }
 }
 
 void p_55_midihandler(int status, int channel, int port, ConstByteArray data, Index length) {
@@ -82913,60 +83818,6 @@ void p_55_perform(
     this->p_55->process(ins, 2, outs, 2, n);
 }
 
-void p_54_perform(
-    const SampleValue * in1,
-    const SampleValue * in2,
-    const SampleValue * in3,
-    const SampleValue * in4,
-    const SampleValue * in5,
-    const SampleValue * in6,
-    const SampleValue * in7,
-    const SampleValue * in8,
-    SampleValue * out1,
-    SampleValue * out2,
-    SampleValue * out3,
-    SampleValue * out4,
-    Index n
-) {
-    // subpatcher: feedbackMixer
-    ConstSampleArray<8> ins = {in1, in2, in3, in4, in5, in6, in7, in8};
-
-    SampleArray<4> outs = {out1, out2, out3, out4};
-    this->p_54->process(ins, 8, outs, 4, n);
-}
-
-void feedbackwriter_01_perform(const SampleValue * input, Index n) {
-    auto& buffer = this->feedbacktilde_01_feedbackbuffer;
-
-    for (Index i = 0; i < n; i++) {
-        buffer[(Index)i] = input[(Index)i];
-    }
-}
-
-void feedbackwriter_02_perform(const SampleValue * input, Index n) {
-    auto& buffer = this->feedbacktilde_02_feedbackbuffer;
-
-    for (Index i = 0; i < n; i++) {
-        buffer[(Index)i] = input[(Index)i];
-    }
-}
-
-void feedbackwriter_03_perform(const SampleValue * input, Index n) {
-    auto& buffer = this->feedbacktilde_03_feedbackbuffer;
-
-    for (Index i = 0; i < n; i++) {
-        buffer[(Index)i] = input[(Index)i];
-    }
-}
-
-void feedbackwriter_04_perform(const SampleValue * input, Index n) {
-    auto& buffer = this->feedbacktilde_04_feedbackbuffer;
-
-    for (Index i = 0; i < n; i++) {
-        buffer[(Index)i] = input[(Index)i];
-    }
-}
-
 void p_56_perform(
     const SampleValue * in1,
     const SampleValue * in2,
@@ -83069,6 +83920,60 @@ void dcblock_tilde_02_perform(const Sample * x, number gain, SampleValue * out1,
 
     this->dcblock_tilde_02_xm1 = __dcblock_tilde_02_xm1;
     this->dcblock_tilde_02_ym1 = __dcblock_tilde_02_ym1;
+}
+
+void p_54_perform(
+    const SampleValue * in1,
+    const SampleValue * in2,
+    const SampleValue * in3,
+    const SampleValue * in4,
+    const SampleValue * in5,
+    const SampleValue * in6,
+    const SampleValue * in7,
+    const SampleValue * in8,
+    SampleValue * out1,
+    SampleValue * out2,
+    SampleValue * out3,
+    SampleValue * out4,
+    Index n
+) {
+    // subpatcher: feedbackMixer
+    ConstSampleArray<8> ins = {in1, in2, in3, in4, in5, in6, in7, in8};
+
+    SampleArray<4> outs = {out1, out2, out3, out4};
+    this->p_54->process(ins, 8, outs, 4, n);
+}
+
+void feedbackwriter_01_perform(const SampleValue * input, Index n) {
+    auto& buffer = this->feedbacktilde_01_feedbackbuffer;
+
+    for (Index i = 0; i < n; i++) {
+        buffer[(Index)i] = input[(Index)i];
+    }
+}
+
+void feedbackwriter_02_perform(const SampleValue * input, Index n) {
+    auto& buffer = this->feedbacktilde_02_feedbackbuffer;
+
+    for (Index i = 0; i < n; i++) {
+        buffer[(Index)i] = input[(Index)i];
+    }
+}
+
+void feedbackwriter_03_perform(const SampleValue * input, Index n) {
+    auto& buffer = this->feedbacktilde_03_feedbackbuffer;
+
+    for (Index i = 0; i < n; i++) {
+        buffer[(Index)i] = input[(Index)i];
+    }
+}
+
+void feedbackwriter_04_perform(const SampleValue * input, Index n) {
+    auto& buffer = this->feedbacktilde_04_feedbackbuffer;
+
+    for (Index i = 0; i < n; i++) {
+        buffer[(Index)i] = input[(Index)i];
+    }
 }
 
 void stackprotect_perform(Index n) {
@@ -83697,10 +84602,9 @@ void assign_defaults()
     xfade_tilde_56_pos = 0;
     dcblock_tilde_02_x = 0;
     dcblock_tilde_02_gain = 0.9997;
+    p_54_target = 0;
     param_19_value = 0;
     param_20_value = 0;
-    midiin_01_port = 0;
-    p_54_target = 0;
     p_55_target = 0;
     p_56_target = 0;
     p_57_target = 0;
@@ -83734,7 +84638,6 @@ void assign_defaults()
     signals[12] = nullptr;
     signals[13] = nullptr;
     signals[14] = nullptr;
-    signals[15] = nullptr;
     didAllocateSignals = 0;
     vs = 0;
     maxvs = 0;
@@ -83748,10 +84651,10 @@ void assign_defaults()
     dcblock_tilde_02_xm1 = 0;
     dcblock_tilde_02_ym1 = 0;
     dcblock_tilde_02_setupDone = false;
-    param_19_lastValue = 0;
     feedbacktilde_01_feedbackbuffer = nullptr;
-    param_20_lastValue = 0;
     feedbacktilde_02_feedbackbuffer = nullptr;
+    param_19_lastValue = 0;
+    param_20_lastValue = 0;
     param_21_lastValue = 0;
     feedbacktilde_03_feedbackbuffer = nullptr;
     feedbacktilde_04_feedbackbuffer = nullptr;
@@ -83807,10 +84710,9 @@ void assign_defaults()
     number xfade_tilde_56_pos;
     number dcblock_tilde_02_x;
     number dcblock_tilde_02_gain;
+    number p_54_target;
     number param_19_value;
     number param_20_value;
-    number midiin_01_port;
-    number p_54_target;
     number p_55_target;
     number p_56_target;
     number p_57_target;
@@ -83832,7 +84734,7 @@ void assign_defaults()
     Index sampleOffsetIntoNextAudioBuffer;
     signal zeroBuffer;
     signal dummyBuffer;
-    SampleValue * signals[16];
+    SampleValue * signals[15];
     bool didAllocateSignals;
     Index vs;
     Index maxvs;
@@ -83846,10 +84748,10 @@ void assign_defaults()
     number dcblock_tilde_02_xm1;
     number dcblock_tilde_02_ym1;
     bool dcblock_tilde_02_setupDone;
-    number param_19_lastValue;
     signal feedbacktilde_01_feedbackbuffer;
-    number param_20_lastValue;
     signal feedbacktilde_02_feedbackbuffer;
+    number param_19_lastValue;
+    number param_20_lastValue;
     number param_21_lastValue;
     signal feedbacktilde_03_feedbackbuffer;
     signal feedbacktilde_04_feedbackbuffer;
@@ -83871,17 +84773,17 @@ void assign_defaults()
     Index isMuted;
     indexlist paramInitIndices;
     indexlist paramInitOrder;
-    RNBOSubpatcher_1607 p_49;
-    RNBOSubpatcher_1608 p_50;
-    RNBOSubpatcher_1609 p_51;
-    RNBOSubpatcher_1610 p_52;
-    RNBOSubpatcher_1611 p_53;
-    RNBOSubpatcher_1612 p_54;
-    RNBOSubpatcher_1613 p_55;
-    RNBOSubpatcher_1614 p_56;
-    RNBOSubpatcher_1615 p_57;
-    RNBOSubpatcher_1616 p_58;
-    RNBOSubpatcher_1617 p_59;
+    RNBOSubpatcher_5149 p_49;
+    RNBOSubpatcher_5150 p_50;
+    RNBOSubpatcher_5151 p_51;
+    RNBOSubpatcher_5152 p_52;
+    RNBOSubpatcher_5153 p_53;
+    RNBOSubpatcher_5154 p_54;
+    RNBOSubpatcher_5155 p_55;
+    RNBOSubpatcher_5156 p_56;
+    RNBOSubpatcher_5157 p_57;
+    RNBOSubpatcher_5158 p_58;
+    RNBOSubpatcher_5159 p_59;
     bool _isInitialized = false;
 };
 
