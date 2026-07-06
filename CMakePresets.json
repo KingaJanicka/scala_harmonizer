@@ -41,12 +41,22 @@
     {
       "name": "ios-auv3-debug",
       "configurePreset": "ios-auv3",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "nativeToolOptions": [
+        "-destination", "id=$env{IOS_DEVICE_UDID}",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration"
+      ]
     },
     {
       "name": "ios-auv3-release",
       "configurePreset": "ios-auv3",
-      "configuration": "Release"
+      "configuration": "Release",
+      "nativeToolOptions": [
+        "-destination", "id=$env{IOS_DEVICE_UDID}",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration"
+      ]
     }
   ],
   "testPresets": [
