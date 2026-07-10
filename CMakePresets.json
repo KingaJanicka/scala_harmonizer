@@ -46,7 +46,7 @@
         "-destination", "id=$env{IOS_DEVICE_UDID}",
         "-allowProvisioningUpdates",
         "-allowProvisioningDeviceRegistration",
-        "-derivedDataPath", "${sourceDir}/build-ios/DerivedData"
+        "SYMROOT=${sourceDir}/build-ios/Products"
       ]
     },
     {
@@ -57,7 +57,7 @@
         "-destination", "id=$env{IOS_DEVICE_UDID}",
         "-allowProvisioningUpdates",
         "-allowProvisioningDeviceRegistration",
-        "-derivedDataPath", "${sourceDir}/build-ios/DerivedData"
+        "SYMROOT=${sourceDir}/build-ios/Products"
       ]
     }
   ],
