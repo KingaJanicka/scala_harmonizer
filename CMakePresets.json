@@ -45,7 +45,8 @@
       "nativeToolOptions": [
         "-destination", "id=$env{IOS_DEVICE_UDID}",
         "-allowProvisioningUpdates",
-        "-allowProvisioningDeviceRegistration"
+        "-allowProvisioningDeviceRegistration",
+        "-derivedDataPath", "${sourceDir}/build-ios/DerivedData"
       ]
     },
     {
@@ -55,7 +56,8 @@
       "nativeToolOptions": [
         "-destination", "id=$env{IOS_DEVICE_UDID}",
         "-allowProvisioningUpdates",
-        "-allowProvisioningDeviceRegistration"
+        "-allowProvisioningDeviceRegistration",
+        "-derivedDataPath", "${sourceDir}/build-ios/DerivedData"
       ]
     }
   ],

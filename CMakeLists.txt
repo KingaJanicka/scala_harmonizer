@@ -38,7 +38,10 @@ set(TARGET_NAME "${PROJECT_NAME}")
 set(PLUGIN_FORMATS VST3 AU Standalone)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set(PLUGIN_FORMATS AUv3)
+    # The AUv3 extension needs a container app to be installable at all;
+    # JUCE embeds the extension into the Standalone app's bundle automatically
+    # when both formats are present.
+    set(PLUGIN_FORMATS Standalone AUv3)
 endif()
 
 if(DEFINED ENV{CI})
