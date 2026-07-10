@@ -10,6 +10,21 @@
         "CMAKE_C_COMPILER_LAUNCHER": "sccache",
         "CMAKE_CXX_COMPILER_LAUNCHER": "sccache"
       }
+    },
+    {
+      "name": "ios-auv3",
+      "displayName": "iOS AUv3 (Xcode)",
+      "description": "Configures an Xcode project targeting iOS/iPadOS devices, building only the AUv3 format. Requires full Xcode.app (not just Command Line Tools) and an Apple Developer Team ID in the APPLE_TEAM_ID env var.",
+      "generator": "Xcode",
+      "binaryDir": "build-ios",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphoneos",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "15.0",
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE": "Automatic",
+        "CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM": "$env{APPLE_TEAM_ID}"
+      }
     }
   ],
   "buildPresets": [
@@ -22,6 +37,28 @@
       "name": "ci-ninja-multi-release",
       "configurePreset": "ci-ninja-multi",
       "configuration": "Release"
+    },
+    {
+      "name": "ios-auv3-debug",
+      "configurePreset": "ios-auv3",
+      "configuration": "Debug",
+      "nativeToolOptions": [
+        "-destination", "id=$env{IOS_DEVICE_UDID}",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration",
+        "SYMROOT=${sourceDir}/build-ios/Products"
+      ]
+    },
+    {
+      "name": "ios-auv3-release",
+      "configurePreset": "ios-auv3",
+      "configuration": "Release",
+      "nativeToolOptions": [
+        "-destination", "id=$env{IOS_DEVICE_UDID}",
+        "-allowProvisioningUpdates",
+        "-allowProvisioningDeviceRegistration",
+        "SYMROOT=${sourceDir}/build-ios/Products"
+      ]
     }
   ],
   "testPresets": [

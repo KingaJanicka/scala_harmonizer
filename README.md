@@ -21,6 +21,8 @@ $ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 $ cmake --build build --config Release
 ```
 
+For building and running the AUv3 on iPad, see [docs/ios-auv3.md](docs/ios-auv3.md).
+
 ## UI Manual
 
 - value changes: dragging or arrow keys
